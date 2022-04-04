@@ -1,0 +1,14 @@
+mito -use try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	is_error(0/1),
+	is_error(0/0),
+]
+-- want.txt --
+[
+	false,
+	true
+]

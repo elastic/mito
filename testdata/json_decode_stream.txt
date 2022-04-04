@@ -1,0 +1,46 @@
+mito -use json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	'{"a":1}{"b":2}'.decode_json_stream(),
+	b'{"a":1}{"b":2}'.decode_json_stream(),
+	decode_json_stream('{"a":1}{"b":2}'),
+	decode_json_stream(b'{"a":1}{"b":2}'),
+]
+-- want.txt --
+[
+	[
+		{
+			"a": 1
+		},
+		{
+			"b": 2
+		}
+	],
+	[
+		{
+			"a": 1
+		},
+		{
+			"b": 2
+		}
+	],
+	[
+		{
+			"a": 1
+		},
+		{
+			"b": 2
+		}
+	],
+	[
+		{
+			"a": 1
+		},
+		{
+			"b": 2
+		}
+	]
+]

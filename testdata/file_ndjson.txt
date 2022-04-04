@@ -1,0 +1,18 @@
+mito -use file src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+file('hello.ndjson', 'application/x-ndjson')
+-- hello.ndjson --
+{"message":"hello"}
+{"message":"world"}
+-- want.txt --
+[
+	{
+		"message": "hello"
+	},
+	{
+		"message": "world"
+	}
+]

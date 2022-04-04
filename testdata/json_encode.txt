@@ -1,0 +1,14 @@
+mito -use json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	{"a":1, "b":[1, 2, 3]}.encode_json(),
+	encode_json({"a":1, "b":[1, 2, 3]}),
+]
+-- want.txt --
+[
+	"{\"a\":1,\"b\":[1,2,3]}",
+	"{\"a\":1,\"b\":[1,2,3]}"
+]

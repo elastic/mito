@@ -1,0 +1,29 @@
+mito -use collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{
+	"a": [
+		{"b": 1},
+		{"b": 2},
+		{"b": 3}
+    ],
+    "b": [
+		{"b": -1, "c": 10},
+		{"b": -2, "c": 20},
+		{"b": -3, "c": 30}
+    ]
+}.collate("a")
+-- want.txt --
+[
+	{
+		"b": 1
+	},
+	{
+		"b": 2
+	},
+	{
+		"b": 3
+	}
+]

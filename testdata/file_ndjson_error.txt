@@ -1,0 +1,22 @@
+mito -use file,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+file('hello.ndjson', 'application/x-ndjson').map(e, try(e, "error.message"))
+-- hello.ndjson --
+{"message":"hello"}
+{"message":"oops"
+{"message":"world"}
+-- want.txt --
+[
+	{
+		"message": "hello"
+	},
+	{
+		"error.message": "unexpected end of JSON input: {\"message\":\"oops\""
+	},
+	{
+		"message": "world"
+	}
+]

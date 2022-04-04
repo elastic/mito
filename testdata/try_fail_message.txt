@@ -1,0 +1,10 @@
+mito -use try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+try(0/0, "error")
+-- want.txt --
+{
+	"error": "division by zero"
+}

@@ -1,0 +1,14 @@
+mito -use collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	[1,2,3,4,5,6,7].max(),
+	max([1,2,3,4,5,6,7]),
+]
+-- want.txt --
+[
+	7,
+	7
+]

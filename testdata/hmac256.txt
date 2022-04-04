@@ -1,0 +1,26 @@
+mito -use crypto src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	b"hello world".hmac("sha256", b"key"),
+	b"hello world".hmac("sha256", b"key").hex(),
+	hmac(b"hello world", "sha256", b"key"),
+	hmac(b"hello world", "sha256", b"key").hex(),
+	"hello world".hmac("sha256", b"key"),
+	"hello world".hmac("sha256", b"key").hex(),
+	hmac("hello world", "sha256", b"key"),
+	hmac("hello world", "sha256", b"key").hex(),
+]
+-- want.txt --
+[
+	"C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E=",
+	"0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1",
+	"C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E=",
+	"0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1",
+	"C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E=",
+	"0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1",
+	"C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E=",
+	"0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1"
+]

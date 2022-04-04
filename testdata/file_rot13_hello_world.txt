@@ -1,0 +1,10 @@
+mito -use file src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+string(file('hello.txt', 'text/rot13'))
+-- hello.txt --
+world!
+-- want.txt --
+"jbeyq!\n"

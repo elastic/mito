@@ -1,0 +1,10 @@
+mito -use file src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+string(file('hello.txt'))
+-- hello.txt --
+world!
+-- want.txt --
+"world!\n"

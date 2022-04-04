@@ -1,0 +1,12 @@
+mito -use collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{"a":1, "b":2}.with({"a":10, "c":3})
+-- want.txt --
+{
+	"a": 10,
+	"b": 2,
+	"c": 3
+}

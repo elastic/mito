@@ -1,0 +1,14 @@
+mito -use crypto src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	"hello world".base64(),
+	base64("hello world"),
+]
+-- want.txt --
+[
+	"aGVsbG8gd29ybGQ=",
+	"aGVsbG8gd29ybGQ="
+]

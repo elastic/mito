@@ -1,0 +1,17 @@
+mito -use time src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	// This depends on the fact that now is evaluated at the start
+	// of execution and now() is evaluated when it is found.
+	now < now(),
+	// This depends on order of evaluation.
+	now() <= now(),
+]
+-- want.txt --
+[
+	true,
+	true
+]

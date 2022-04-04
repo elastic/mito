@@ -1,0 +1,81 @@
+mito -use http,collections,crypto src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	request("GET", "http://www.example.com/"),
+	request("GET", "http://www.example.com/", "request data"),
+	request("GET", "http://www.example.com/").with({"header":{
+		"Authorization": "Basic "+string(base64("username:password")),
+	}}),
+	get_request("http://www.example.com/"),
+	post_request("http://www.example.com/", "text/plain", "request data"),
+]
+-- want.txt --
+[
+	{
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	{
+		"Body": "request data",
+		"Close": false,
+		"ContentLength": 12,
+		"Header": {},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	{
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/",
+		"header": {
+			"Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+		}
+	},
+	{
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	{
+		"Body": "request data",
+		"Close": false,
+		"ContentLength": 12,
+		"Header": {
+			"Content-Type": [
+				"text/plain"
+			]
+		},
+		"Host": "www.example.com",
+		"Method": "POST",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	}
+]

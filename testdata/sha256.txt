@@ -1,0 +1,26 @@
+mito -use crypto src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	b"hello world".sha256(),
+	b"hello world".sha256().hex(),
+	sha256(b"hello world"),
+	sha256(b"hello world").hex(),
+	"hello world".sha256(),
+	"hello world".sha256().hex(),
+	sha256("hello world"),
+	sha256("hello world").hex(),
+]
+-- want.txt --
+[
+	"uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=",
+	"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+	"uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=",
+	"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+	"uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=",
+	"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+	"uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=",
+	"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+]

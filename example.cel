@@ -1,0 +1,36 @@
+state.map(e, has(e.other) && e.other != '',
+	has(e.num) && size(e.num) != 0 && has(e.let) && size(e.let) != 0 ?
+		// Handle Cartesian product.
+		e.num.map(v1,
+			e.let.map(v2,
+				e.with({
+					"@triggered": now,   // As a value, the start time.
+					"@timestamp": now(), // As a function, the time the action happened.
+					"original": e.encode_json(),
+					"numlet": e.num+e.let,
+					"num": v1,
+					"let": v2,
+				})
+		))
+	:
+		// Handle cases where there is only one of num or let and so
+		// the Cartesian product would be empty: S × Ø, S = num or let.
+		//
+		// This expression is nested to agree with the Cartesian
+		// product (an alternative is to flatten that for each e).
+		[[e.with({
+			"@triggered": now,   // As a value, the start time.
+			"@timestamp": now(), // As a function, the time the action happened.
+			"original": e.encode_json(),
+		})]] 
+).flatten().drop_empty().as(res,
+	{
+		// Get cursor summary.
+		"events": res,
+		"cursor": res.collate('@timestamp').as(t, {"timestamps":{
+			"first": t.min(),
+			"last": t.max(),
+			"list": t,
+		}}),
+	}
+)

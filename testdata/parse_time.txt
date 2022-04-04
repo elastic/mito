@@ -1,0 +1,8 @@
+mito -use time src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+"11:17AM".parse_time(time_layout.Kitchen)
+-- want.txt --
+"0000-01-01T11:17:00Z"

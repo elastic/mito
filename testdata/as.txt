@@ -1,0 +1,34 @@
+mito -use collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	{"a":1, "b":2}.as(v, v.a == 1),
+	{"a":1, "b":2}.as(v, v),
+	{"a":1, "b":2}.as(v, v.with({"c":3})),
+	{"a":1, "b":2}.as(v, [v, v]),
+]
+-- want.txt --
+[
+	true,
+	{
+		"a": 1,
+		"b": 2
+	},
+	{
+		"a": 1,
+		"b": 2,
+		"c": 3
+	},
+	[
+		{
+			"a": 1,
+			"b": 2
+		},
+		{
+			"a": 1,
+			"b": 2
+		}
+	]
+]

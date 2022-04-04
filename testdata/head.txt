@@ -1,0 +1,47 @@
+mito -use http,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+head("http://www.example.com/").drop([
+	"ContentLength",
+	"Header.Accept-Ranges",
+	"Header.Age",
+	"Header.Content-Encoding",
+	"Header.Content-Length",
+	"Header.Date",
+	"Header.Etag",
+	"Header.Cache-Control",
+	"Header.Last-Modified",
+	"Header.Vary",
+	"Header.X-Cache",
+	"Header.Expires",
+	"Header.Server",
+])
+-- want.txt --
+{
+	"Body": "",
+	"Close": false,
+	"Header": {
+		"Content-Type": [
+			"text/html; charset=UTF-8"
+		]
+	},
+	"Proto": "HTTP/1.1",
+	"ProtoMajor": 1,
+	"ProtoMinor": 1,
+	"Request": {
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {},
+		"Host": "www.example.com",
+		"Method": "HEAD",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	"Status": "200 OK",
+	"StatusCode": 200,
+	"Uncompressed": false
+}

@@ -1,0 +1,21 @@
+mito -use collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[[{"a":1,"b":[10, 11]}],[2,3],[[[4]],[5,6]]].flatten()
+-- want.txt --
+[
+	{
+		"a": 1,
+		"b": [
+			10,
+			11
+		]
+	},
+	2,
+	3,
+	4,
+	5,
+	6
+]

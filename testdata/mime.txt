@@ -1,0 +1,17 @@
+mito -use mime src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	string(b"hello world!".mime("text/rot13")),
+	string(b"hello world!".mime("text/upper")),
+	string(b"\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xcaH\xcd\xc9\xc9W(\xcf/\xcaIQ\x04\x04\x00\x00\xff\xffm´\x03\f\x00\x00\x00"
+		.mime("application/gzip")),
+]
+-- want.txt --
+[
+	"uryyb jbeyq!",
+	"HELLO WORLD!",
+	"hello world!"
+]

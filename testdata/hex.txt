@@ -1,0 +1,14 @@
+mito -use crypto src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	"hello world".hex(),
+	hex("hello world"),
+]
+-- want.txt --
+[
+	"68656c6c6f20776f726c64",
+	"68656c6c6f20776f726c64"
+]
