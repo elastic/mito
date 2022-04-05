@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -35,6 +36,40 @@ import (
 // type. The values in the map must be one of: func([]byte), func(io.Reader) io.Reader,
 // func(io.Reader) (io.Reader, error) or func(io.Reader) ref.Val. If the
 // transform is func([]byte) it is expected to mutate the bytes in place.
+//
+// Dir
+//
+// dir returns either a directory for the provided path:
+//
+//     dir(<string>) -> <list<map<string,dyn>>>
+//
+// Examples:
+//
+//     dir('subdir')
+//
+//     will return something like:
+//
+//     [
+//         {
+//             "is_dir": true,
+//             "mod_time": "2022-04-05T20:53:11.923840504+09:30",
+//             "name": "subsubdir",
+//             "size": 4096
+//         },
+//         {
+//             "is_dir": false,
+//             "mod_time": "2022-04-05T20:53:11.923840504+09:30",
+//             "name": "a.txt",
+//             "size": 13
+//         },
+//         {
+//             "is_dir": false,
+//             "mod_time": "2022-04-05T20:53:11.923840504+09:30",
+//             "name": "b.txt",
+//             "size": 11
+//         }
+//     ]
+//
 //
 // File
 //
@@ -80,6 +115,13 @@ type fileLib struct {
 func (fileLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
 		cel.Declarations(
+			decls.NewFunction("dir",
+				decls.NewOverload(
+					"dir_string",
+					[]*expr.Type{decls.String},
+					decls.NewListType(decls.NewMapType(decls.String, decls.Dyn)),
+				),
+			),
 			decls.NewFunction("file",
 				decls.NewOverload(
 					"file_string",
@@ -100,6 +142,12 @@ func (l fileLib) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{
 		cel.Functions(
 			&functions.Overload{
+				Operator: "dir_string",
+				Unary:    readDir,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
 				Operator: "file_string",
 				Unary:    readFile,
 			},
@@ -109,6 +157,37 @@ func (l fileLib) ProgramOptions() []cel.ProgramOption {
 			},
 		),
 	}
+}
+
+func readDir(arg ref.Val) ref.Val {
+	path, ok := arg.(types.String)
+	if !ok {
+		return types.ValOrErr(path, "no such overload for dir: %T", arg)
+	}
+	f, err := os.Open(string(path))
+	if err != nil {
+		return types.NewErr("dir: %v", err)
+	}
+	dir, err := f.ReadDir(0)
+	if err != nil {
+		return types.NewErr("dir: %v", err)
+	}
+	// Stabilise order across platforms.
+	sort.Slice(dir, func(i, j int) bool { return dir[i].Name() < dir[j].Name() })
+	res := make([]map[string]interface{}, len(dir))
+	for i, e := range dir {
+		fi, err := e.Info()
+		if err != nil {
+			return types.NewErr("dir: %v", err)
+		}
+		res[i] = map[string]interface{}{
+			"name":     e.Name(),
+			"is_dir":   e.IsDir(),
+			"size":     fi.Size(),
+			"mod_time": fi.ModTime(),
+		}
+	}
+	return types.NewDynamicList(types.DefaultTypeAdapter, res)
 }
 
 func readFile(arg ref.Val) ref.Val {
