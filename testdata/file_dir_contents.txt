@@ -1,0 +1,23 @@
+mito -use file,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+dir('subdir').map(f, !f.is_dir, {
+	f.name: string(file('subdir/'+f.name)),
+})
+-- subdir/a.txt --
+hello world!
+-- subdir/b.txt --
+hello cel!
+-- subdir/subsubdir/c.txt --
+words
+-- want.txt --
+[
+	{
+		"a.txt": "hello world!\n"
+	},
+	{
+		"b.txt": "hello cel!\n"
+	}
+]
