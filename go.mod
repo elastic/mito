@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.11.2
+	github.com/google/cel-go v0.11.3-0.20220406063934-e53a8821becf
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.8.1
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
@@ -19,5 +19,3 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/errgo.v2 v2.1.0 // indirect
 )
-
-replace github.com/google/cel-go => github.com/kortschak/cel-go v0.11.0-pre.0.20220331072716-c15dd2966f23
