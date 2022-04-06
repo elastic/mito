@@ -96,21 +96,21 @@ func (tryLib) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{
 		cel.Functions(
 			&functions.Overload{
-				Operator:   "try_dyn",
-				Unary:      try,
-				AllowError: true,
+				Operator:  "try_dyn",
+				Unary:     try,
+				NonStrict: true,
 			},
 			&functions.Overload{
-				Operator:   "try_dyn_string",
-				Binary:     tryMessage,
-				AllowError: true,
+				Operator:  "try_dyn_string",
+				Binary:    tryMessage,
+				NonStrict: true,
 			},
 		),
 		cel.Functions(
 			&functions.Overload{
-				Operator:   "is_error_dyn",
-				Unary:      isError,
-				AllowError: true,
+				Operator:  "is_error_dyn",
+				Unary:     isError,
+				NonStrict: true,
 			},
 		),
 	}

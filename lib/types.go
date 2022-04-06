@@ -54,6 +54,7 @@ var (
 		types.StringType:    reflectStringType,
 		types.TimestampType: reflect.TypeOf(time.Time{}),
 		types.UintType:      reflect.TypeOf(uint64(0)),
+		types.UnknownType:   reflect.TypeOf([]int64(types.Unknown(nil))), // Double conversion to catch type changes.
 	}
 
 	// Linear search for proto.Message mappings and others.

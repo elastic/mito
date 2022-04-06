@@ -105,26 +105,26 @@ func (ch sendLib) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{
 		cel.Functions(
 			&functions.Overload{
-				Operator:   "dyn_send_refval_string",
-				Binary:     ch.sendRefVal,
-				AllowError: true,
+				Operator:  "dyn_send_refval_string",
+				Binary:    ch.sendRefVal,
+				NonStrict: true,
 			},
 			&functions.Overload{
-				Operator:   "send_dyn_refval_string",
-				Binary:     ch.sendRefVal,
-				AllowError: true,
+				Operator:  "send_dyn_refval_string",
+				Binary:    ch.sendRefVal,
+				NonStrict: true,
 			},
 		),
 		cel.Functions(
 			&functions.Overload{
-				Operator:   "dyn_send_string",
-				Binary:     ch.send,
-				AllowError: true,
+				Operator:  "dyn_send_string",
+				Binary:    ch.send,
+				NonStrict: true,
 			},
 			&functions.Overload{
-				Operator:   "send_dyn_string",
-				Binary:     ch.send,
-				AllowError: true,
+				Operator:  "send_dyn_string",
+				Binary:    ch.send,
+				NonStrict: true,
 			},
 		),
 		cel.Functions(
