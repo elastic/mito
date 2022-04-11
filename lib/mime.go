@@ -89,11 +89,11 @@ func (l mimeLib) ProgramOptions() []cel.ProgramOption {
 func (l mimeLib) transformMIME(arg0, arg1 ref.Val) ref.Val {
 	input, ok := arg0.(types.Bytes)
 	if !ok {
-		return types.ValOrErr(input, "no such overload for file path: %T", arg0)
+		return types.ValOrErr(input, "no such overload for file path: %s", arg0.Type())
 	}
 	mimetype, ok := arg1.(types.String)
 	if !ok {
-		return types.ValOrErr(mimetype, "no such overload for file path: %T", arg1)
+		return types.ValOrErr(mimetype, "no such overload for mime type: %s", arg1.Type())
 	}
 	transform, ok := l.transforms[string(mimetype)]
 	if !ok {

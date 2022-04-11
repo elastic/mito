@@ -162,7 +162,7 @@ func (l fileLib) ProgramOptions() []cel.ProgramOption {
 func readDir(arg ref.Val) ref.Val {
 	path, ok := arg.(types.String)
 	if !ok {
-		return types.ValOrErr(path, "no such overload for dir: %T", arg)
+		return types.ValOrErr(path, "no such overload for dir: %s", arg.Type())
 	}
 	f, err := os.Open(string(path))
 	if err != nil {
@@ -193,7 +193,7 @@ func readDir(arg ref.Val) ref.Val {
 func readFile(arg ref.Val) ref.Val {
 	path, ok := arg.(types.String)
 	if !ok {
-		return types.ValOrErr(path, "no such overload for file: %T", arg)
+		return types.ValOrErr(path, "no such overload for file: %s", arg.Type())
 	}
 	b, err := os.ReadFile(string(path))
 	if err != nil {
@@ -205,11 +205,11 @@ func readFile(arg ref.Val) ref.Val {
 func (l fileLib) readMIMEFile(arg0, arg1 ref.Val) ref.Val {
 	path, ok := arg0.(types.String)
 	if !ok {
-		return types.ValOrErr(path, "no such overload for file path: %T", arg0)
+		return types.ValOrErr(path, "no such overload for file path: %s", arg0.Type())
 	}
 	mimetype, ok := arg1.(types.String)
 	if !ok {
-		return types.ValOrErr(mimetype, "no such overload for file path: %T", arg1)
+		return types.ValOrErr(mimetype, "no such overload for mime type: %s", arg1.Type())
 	}
 	transform, ok := l.transforms[string(mimetype)]
 	if !ok {

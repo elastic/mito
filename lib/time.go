@@ -202,11 +202,11 @@ func now(args ...ref.Val) ref.Val {
 func formatTime(arg, layout ref.Val) ref.Val {
 	obj, ok := arg.(types.Timestamp)
 	if !ok {
-		return types.ValOrErr(obj, "no such overload for time layout: %T", arg)
+		return types.ValOrErr(obj, "no such overload for time layout: %s", arg.Type())
 	}
 	l, ok := layout.(types.String)
 	if !ok {
-		return types.ValOrErr(l, "no such overload for time layout: %T", layout)
+		return types.ValOrErr(l, "no such overload for time layout: %s", layout.Type())
 	}
 	return types.String(obj.Format(string(l)))
 }
@@ -214,11 +214,11 @@ func formatTime(arg, layout ref.Val) ref.Val {
 func parseTimeWithLayout(arg, layout ref.Val) ref.Val {
 	obj, ok := arg.(types.String)
 	if !ok {
-		return types.ValOrErr(obj, "no such overload for time layout: %T", arg)
+		return types.ValOrErr(obj, "no such overload for time layout: %s", arg.Type())
 	}
 	l, ok := layout.(types.String)
 	if !ok {
-		return types.ValOrErr(l, "no such overload for time layout: %T", layout)
+		return types.ValOrErr(l, "no such overload for time layout: %s", layout.Type())
 	}
 	t, err := time.Parse(string(l), string(obj))
 	if err != nil {
@@ -230,11 +230,11 @@ func parseTimeWithLayout(arg, layout ref.Val) ref.Val {
 func parseTimeWithLayouts(arg, layout ref.Val) ref.Val {
 	obj, ok := arg.(types.String)
 	if !ok {
-		return types.ValOrErr(obj, "no such overload for time layout: %T", arg)
+		return types.ValOrErr(obj, "no such overload for time layout: %s", arg.Type())
 	}
 	layouts, ok := layout.(traits.Lister)
 	if !ok {
-		return types.ValOrErr(layouts, "no such overload for time layout: %T", layout)
+		return types.ValOrErr(layouts, "no such overload for time layout: %s", layout.Type())
 	}
 	it := layouts.Iterator()
 	for it.HasNext() == types.True {
