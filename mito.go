@@ -101,7 +101,12 @@ func Main() int {
 		}
 	} else {
 		for _, u := range strings.Split(*use, ",") {
-			libs = append(libs, libMap[u])
+			l, ok := libMap[u]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "no lib %q\n", u)
+				return 2
+			}
+			libs = append(libs, l)
 		}
 	}
 	b, err := os.ReadFile(flag.Args()[0])
