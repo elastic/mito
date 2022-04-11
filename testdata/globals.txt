@@ -1,0 +1,43 @@
+mito -cfg cfg.yaml src.cel
+! stderr .
+cmp stdout want.txt
+
+-- cfg.yaml --
+globals:
+  i: 42
+  f: 42.0
+  s: "forty two"
+  b: true
+  ii: [6, 9, 42]
+  msd:
+    question: "What do you get if you multiply six by nine?"
+    answer: 42
+-- src.cel --
+{
+	"b": b,
+	"i": i,
+	"ii": ii,
+	"f": f,
+	"msd": msd,
+	"msd.answer": msd.answer,
+	"msd.question": msd.question,
+	"s": s,
+}
+-- want.txt --
+{
+	"b": true,
+	"f": 42,
+	"i": 42,
+	"ii": [
+		6,
+		9,
+		42
+	],
+	"msd": {
+		"answer": 42,
+		"question": "What do you get if you multiply six by nine?"
+	},
+	"msd.answer": 42,
+	"msd.question": "What do you get if you multiply six by nine?",
+	"s": "forty two"
+}
