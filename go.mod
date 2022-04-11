@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.11.3-0.20220406063934-e53a8821becf
+	github.com/google/cel-go v0.11.3-0.20220411175735-560fc9d458c7
 	github.com/google/go-cmp v0.5.7
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.8.1
@@ -26,5 +26,3 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/errgo.v2 v2.1.0 // indirect
 )
-
-replace github.com/google/cel-go => github.com/kortschak/cel-go v0.11.0-pre.0.20220409010912-481fae9550a6
