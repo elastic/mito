@@ -59,7 +59,6 @@ import (
 //     is_error(0/1)            // return false
 //     is_error(0/0)            // return true
 //
-// Depends on https://github.com/google/cel-go/issues/525.
 func Try() cel.EnvOption {
 	return cel.Lib(tryLib{})
 }
