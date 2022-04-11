@@ -1,0 +1,26 @@
+mito -use http,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	"a=1&b=2&b=3".parse_query(),
+	"a=1&b=2&b=3".parse_query().format_query(),
+	"a=1&b=2&b=3".parse_query().with_update({"c":["1","more"]}).format_query(),
+	"a=1&b=2&b=3".parse_query().with_replace({"a":["2"]}).format_query(),
+]
+-- want.txt --
+[
+	{
+		"a": [
+			"1"
+		],
+		"b": [
+			"2",
+			"3"
+		]
+	},
+	"a=1&b=2&b=3",
+	"a=1&b=2&b=3&c=1&c=more",
+	"a=2&b=2&b=3"
+]

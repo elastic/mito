@@ -162,7 +162,7 @@ import (
 //         "header": {
 //             "Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
 //         }
-//     },
+//     }
 //
 //
 // Do Request
@@ -174,6 +174,82 @@ import (
 // Example:
 //
 //     get_request("http://www.example.com/").do_request()  // returns {"Body": "PCFkb2N0e...
+//
+//
+// Parse URL
+//
+// parse_url returns a map holding the details of the parsed URL corresponding
+// to the Go url.URL struct:
+//
+//     <string>.parse_url() -> <map<string,dyn>>
+//
+// Example:
+//
+//     "https://pkg.go.dev/net/url#URL".parse_url()
+//
+//     will return:
+//
+//     {
+//         "ForceQuery": false,
+//         "Fragment": "URL",
+//         "Host": "pkg.go.dev",
+//         "Opaque": "",
+//         "Path": "/net/url",
+//         "RawFragment": "",
+//         "RawPath": "",
+//         "RawQuery": "",
+//         "Scheme": "https",
+//         "User": null
+//     }
+//
+//
+// Format URL
+//
+// format_url returns string corresponding to the URL map that is the receiver:
+//
+//     <map<string,dyn>>.format_url() -> <string>
+//
+// Example:
+//
+//     "https://pkg.go.dev/net/url#URL".parse_url().with_replace({"Host": "godoc.org"}).format_url()
+//
+//     will return:
+//
+//     "https://godoc.org/net/url#URL"
+//
+//
+// Parse Query
+//
+// parse_url returns a map holding the details of the parsed query corresponding
+// to the Go url.Values map:
+//
+//     <string>.parse_query() -> <map<string,<list<string>>>
+//
+// Example:
+//
+//     "page=1&line=25".parse_url()
+//
+//     will return:
+//
+//     {
+//         "line": ["25"],
+//         "page": ["1"]
+//     }
+//
+//
+// Format Query
+//
+// format_query returns string corresponding to the query map that is the receiver:
+//
+//     <map<string,<list<string>>>.format_query() -> <string>
+//
+// Example:
+//
+//     "page=1&line=25".parse_query().with_replace({"page":[string(2)]}).format_query()
+//
+//     will return:
+//
+//     line=25&page=2"
 //
 func HTTP(client *http.Client, limit *rate.Limiter) cel.EnvOption {
 	if client == nil {
@@ -265,6 +341,34 @@ func (httpLib) CompileOptions() []cel.EnvOption {
 					decls.NewMapType(decls.String, decls.Dyn),
 				),
 			),
+			decls.NewFunction("parse_url",
+				decls.NewInstanceOverload(
+					"string_parse_url",
+					[]*expr.Type{decls.String},
+					decls.NewMapType(decls.String, decls.Dyn),
+				),
+			),
+			decls.NewFunction("format_url",
+				decls.NewInstanceOverload(
+					"map_format_url",
+					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn)},
+					decls.String,
+				),
+			),
+			decls.NewFunction("parse_query",
+				decls.NewInstanceOverload(
+					"string_parse_query",
+					[]*expr.Type{decls.String},
+					decls.NewMapType(decls.String, decls.NewListType(decls.String)),
+				),
+			),
+			decls.NewFunction("format_query",
+				decls.NewInstanceOverload(
+					"map_format_query",
+					[]*expr.Type{decls.NewMapType(decls.String, decls.NewListType(decls.String))},
+					decls.String,
+				),
+			),
 		),
 	}
 }
@@ -327,6 +431,30 @@ func (l httpLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "map_do_request",
 				Unary:    l.doRequest,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "string_parse_url",
+				Unary:    parseURL,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "map_format_url",
+				Unary:    formatURL,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "string_parse_query",
+				Unary:    parseQuery,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "map_format_query",
+				Unary:    formatQuery,
 			},
 		),
 	}
@@ -736,4 +864,147 @@ func makeURL(val reflect.Value) (reflect.Value, error) {
 		return reflect.Value{}, err
 	}
 	return reflect.ValueOf(u), nil
+}
+
+func parseURL(arg ref.Val) ref.Val {
+	addr, ok := arg.(types.String)
+	if !ok {
+		return types.ValOrErr(addr, "no such overload for request")
+	}
+	u, err := url.Parse(string(addr))
+	if err != nil {
+		return types.NewErr("%s", err)
+	}
+	var user interface{}
+	if u.User != nil {
+		password, passwordSet := u.User.Password()
+		user = map[string]interface{}{
+			"Username":    u.User.Username(),
+			"Password":    password,
+			"PasswordSet": passwordSet,
+		}
+	}
+	return types.NewStringInterfaceMap(types.DefaultTypeAdapter, map[string]interface{}{
+		"Scheme":      u.Scheme,
+		"Opaque":      u.Opaque,
+		"User":        user,
+		"Host":        u.Host,
+		"Path":        u.Path,
+		"RawPath":     u.RawPath,
+		"ForceQuery":  u.ForceQuery,
+		"RawQuery":    u.RawQuery,
+		"Fragment":    u.Fragment,
+		"RawFragment": u.RawFragment,
+	})
+}
+
+func formatURL(arg ref.Val) ref.Val {
+	urlMap, ok := arg.(traits.Mapper)
+	if !ok {
+		return types.ValOrErr(urlMap, "no such overload")
+	}
+	v, err := urlMap.ConvertToNative(reflectMapStringAnyType)
+	if err != nil {
+		return types.NewErr("no such overload for format_url: %v", err)
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		// This should never happen.
+		return types.NewErr("unexpected type for url map: %T", v)
+	}
+	u := url.URL{
+		Scheme:      maybeStringLookup(m, "Scheme"),
+		Opaque:      maybeStringLookup(m, "Opaque"),
+		Host:        maybeStringLookup(m, "Host"),
+		Path:        maybeStringLookup(m, "Path"),
+		RawPath:     maybeStringLookup(m, "RawPath"),
+		ForceQuery:  maybeBoolLookup(m, "ForceQuery"),
+		RawQuery:    maybeStringLookup(m, "RawQuery"),
+		Fragment:    maybeStringLookup(m, "Fragment"),
+		RawFragment: maybeStringLookup(m, "RawFragment"),
+	}
+	user, ok := urlMap.Find(types.String("User"))
+	if ok {
+		switch user := user.(type) {
+		case nil:
+		case traits.Mapper:
+			var username types.String
+			un, ok := user.Find(types.String("Username"))
+			if ok {
+				username, ok = un.(types.String)
+				if !ok {
+					return types.NewErr("invalid type for username: %s", un.Type())
+				}
+			}
+			if user.Get(types.String("PasswordSet")) == types.True {
+				var password types.String
+				pw, ok := user.Find(types.String("Password"))
+				if ok {
+					password, ok = pw.(types.String)
+					if !ok {
+						return types.NewErr("invalid type for password: %s", pw.Type())
+					}
+				}
+				u.User = url.UserPassword(string(username), string(password))
+			} else {
+				u.User = url.User(string(username))
+			}
+		default:
+			if user != types.NullValue {
+				return types.NewErr("unsupported type: %T", user)
+			}
+		}
+	}
+	return types.String(u.String())
+}
+
+// maybeStringLookup returns a string from m[key] if it is present and the
+// empty string if not. It panics is m[key] is not a string.
+func maybeStringLookup(m map[string]interface{}, key string) string {
+	v, ok := m[key]
+	if !ok {
+		return ""
+	}
+	return v.(string)
+}
+
+// maybeBoolLookup returns a bool from m[key] if it is present and false if
+// not. It panics is m[key] is not a bool.
+func maybeBoolLookup(m map[string]interface{}, key string) bool {
+	v, ok := m[key]
+	if !ok {
+		return false
+	}
+	return v.(bool)
+}
+
+func parseQuery(arg ref.Val) ref.Val {
+	query, ok := arg.(types.String)
+	if !ok {
+		return types.ValOrErr(query, "no such overload")
+	}
+	q, err := url.ParseQuery(string(query))
+	if err != nil {
+		return types.NewErr("%s", err)
+	}
+	return types.DefaultTypeAdapter.NativeToValue(q)
+}
+
+func formatQuery(arg ref.Val) ref.Val {
+	queryMap, ok := arg.(traits.Mapper)
+	if !ok {
+		return types.ValOrErr(queryMap, "no such overload")
+	}
+	q, err := queryMap.ConvertToNative(reflectMapStringStringSliceType)
+	if err != nil {
+		return types.NewErr("no such overload for format_url: %v", err)
+	}
+	switch q := q.(type) {
+	case url.Values:
+		return types.String(url.Values(q).Encode())
+	case map[string][]string:
+		return types.String(url.Values(q).Encode())
+	default:
+		return types.NewErr("invalid type for format_url: %T", q)
+	}
 }

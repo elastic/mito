@@ -1,0 +1,56 @@
+mito -use http,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	"https://pkg.go.dev/net/url#URL".parse_url(),
+	"https://pkg.go.dev/net/url#URL".parse_url().with_replace({"Host": "godoc.org"}).format_url(),
+	"https://pkg.go.dev/net/url#URL".parse_url().with_replace({"User":{"Username":"secretgopher","PasswordSet":true,"Password":"Shhhh!"}}).format_url(),
+	"https://user:pass@unsafehost.net/".parse_url(),
+	"https://user:pass@unsafehost.net/".parse_url().format_url(),
+	"https://user:pass@unsafehost.net/".parse_url().with_replace({"User":{"Username":"otheruser","PasswordSet":false}}).format_url(),
+	"https://user:pass@unsafehost.net/".parse_url().with_replace({"User":{"Username":"otheruser","PasswordSet":true,"Password":"pwnt"}}).format_url(),
+	"https://user:pass@unsafehost.net/".parse_url().with_replace({"User":{"Username":"otheruser"}}).format_url(),
+	"https://user:pass@unsafehost.net/".parse_url().with_replace({"User":null}).format_url(),
+	"https://user:pass@unsafehost.net/".parse_url().with_replace({"User":{"Username":"otheruser","PasswordSet":true}}).format_url(),
+]
+-- want.txt --
+[
+	{
+		"ForceQuery": false,
+		"Fragment": "URL",
+		"Host": "pkg.go.dev",
+		"Opaque": "",
+		"Path": "/net/url",
+		"RawFragment": "",
+		"RawPath": "",
+		"RawQuery": "",
+		"Scheme": "https",
+		"User": null
+	},
+	"https://godoc.org/net/url#URL",
+	"https://secretgopher:Shhhh%21@pkg.go.dev/net/url#URL",
+	{
+		"ForceQuery": false,
+		"Fragment": "",
+		"Host": "unsafehost.net",
+		"Opaque": "",
+		"Path": "/",
+		"RawFragment": "",
+		"RawPath": "",
+		"RawQuery": "",
+		"Scheme": "https",
+		"User": {
+			"Password": "pass",
+			"PasswordSet": true,
+			"Username": "user"
+		}
+	},
+	"https://user:pass@unsafehost.net/",
+	"https://otheruser@unsafehost.net/",
+	"https://otheruser:pwnt@unsafehost.net/",
+	"https://otheruser@unsafehost.net/",
+	"https://unsafehost.net/",
+	"https://otheruser:@unsafehost.net/"
+]

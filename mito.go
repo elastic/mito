@@ -194,8 +194,12 @@ func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, e
 	if err != nil {
 		return "", fmt.Errorf("failed json conversion: %v", err)
 	}
-	b, err = json.MarshalIndent(res, "", "\t")
-	return string(b), err
+	var buf strings.Builder
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "\t")
+	err = enc.Encode(res)
+	return strings.TrimRight(buf.String(), "\n"), err
 }
 
 // rot13 is provided for testing purposes.
