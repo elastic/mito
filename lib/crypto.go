@@ -34,7 +34,7 @@ import (
 	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
-// Collections returns a cel.EnvOption to configure extended functions for
+// Crypto returns a cel.EnvOption to configure extended functions for
 // cryptographic hash functions and encoding.
 //
 // Base64
