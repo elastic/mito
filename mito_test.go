@@ -21,6 +21,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"testing"
 	"time"
@@ -167,5 +168,123 @@ func TestVars(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("unexpected result: got:- want:+\n%v", cmp.Diff(got, want))
+	}
+}
+
+var regexpTests = []struct {
+	name    string
+	regexps map[string]*regexp.Regexp
+	src     string
+	want    string
+}{
+	{
+		name: "match",
+		regexps: map[string]*regexp.Regexp{
+			"foo": regexp.MustCompile("foo"),
+		},
+		src: `['food'.re_match('foo'), b'food'.re_match('foo')]`,
+		want: `[
+	true,
+	true
+]`,
+	},
+	{
+		name: "find",
+		regexps: map[string]*regexp.Regexp{
+			"foo": regexp.MustCompile("foo"),
+		},
+		src: `['food'.re_find('foo'), b'food'.re_find('foo')]`,
+		want: `[
+	"foo",
+	"Zm9v"
+]`,
+	},
+	{
+		name: "find_all",
+		regexps: map[string]*regexp.Regexp{
+			"foo": regexp.MustCompile("foo."),
+		},
+		src: `['food fool'.re_find_all('foo'), b'food fool'.re_find_all('foo')]`,
+		want: `[
+	[
+		"food",
+		"fool"
+	],
+	[
+		"Zm9vZA==",
+		"Zm9vbA=="
+	]
+]`,
+	},
+	{
+		name: "find_submatch",
+		regexps: map[string]*regexp.Regexp{
+			"foo": regexp.MustCompile("foo(.)"),
+		},
+		src: `['food fool'.re_find_submatch('foo'), b'food fool'.re_find_submatch('foo')]`,
+		want: `[
+	[
+		"food",
+		"d"
+	],
+	[
+		"Zm9vZA==",
+		"ZA=="
+	]
+]`,
+	},
+	{
+		name: "find_all_submatch",
+		regexps: map[string]*regexp.Regexp{
+			"foo": regexp.MustCompile("foo(.)"),
+		},
+		src: `['food fool'.re_find_all_submatch('foo'), b'food fool'.re_find_all_submatch('foo')]`,
+		want: `[
+	[
+		[
+			"food",
+			"d"
+		],
+		[
+			"fool",
+			"l"
+		]
+	],
+	[
+		[
+			"Zm9vZA==",
+			"ZA=="
+		],
+		[
+			"Zm9vbA==",
+			"bA=="
+		]
+	]
+]`,
+	},
+	{
+		name: "replace_all",
+		regexps: map[string]*regexp.Regexp{
+			"foo": regexp.MustCompile("(f)oo([ld])"),
+		},
+		src: `['food fool'.re_replace_all('foo', '${1}u${2}'), string(b'food fool'.re_replace_all('foo', b'${1}u${2}'))]`,
+		want: `[
+	"fud ful",
+	"fud ful"
+]`,
+	},
+}
+
+func TestRegaxp(t *testing.T) {
+	for _, test := range regexpTests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := eval(test.src, "", interpreter.EmptyActivation(), lib.Regexp(test.regexps))
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if got != test.want {
+				t.Errorf("unexpected result: got:- want:+\n%v", cmp.Diff(got, test.want))
+			}
+		})
 	}
 }

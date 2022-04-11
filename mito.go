@@ -30,6 +30,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -80,6 +81,18 @@ func Main() int {
 		}
 		if len(cfg.Globals) != 0 {
 			libs = append(libs, lib.Globals(cfg.Globals))
+		}
+		if len(cfg.Regexps) != 0 {
+			regexps := make(map[string]*regexp.Regexp)
+			for name, expr := range cfg.Regexps {
+				re, err := regexp.Compile(expr)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return 2
+				}
+				regexps[name] = re
+			}
+			libs = append(libs, lib.Regexp(regexps))
 		}
 	}
 	if *use == "all" {

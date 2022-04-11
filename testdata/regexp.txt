@@ -1,0 +1,76 @@
+mito -cfg cfg.yaml src.cel
+! stderr .
+cmp stdout want.txt
+
+-- cfg.yaml --
+regexp:
+  "foo": "foo"
+  "foo.": "foo."
+  "foo(.)": "foo(.)"
+  "(f)oo([ld])": "(f)oo([ld])"
+-- src.cel --
+{
+	"match": ['food'.re_match('foo'), b'food'.re_match('foo')],
+	"find": ['food'.re_find('foo.'), b'food'.re_find('foo.')],
+	"find_all": ['food fool'.re_find_all('foo.'), b'food fool'.re_find_all('foo.')],
+	"find_submatch": ['food fool'.re_find_submatch('foo(.)'), b'food fool'.re_find_submatch('foo(.)')],
+	"find_all_submatch": ['food fool'.re_find_all_submatch('foo(.)'), b'food fool'.re_find_all_submatch('foo(.)')],
+	"replace_all": ['food fool'.re_replace_all('(f)oo([ld])', '${1}u${2}'), string(b'food fool'.re_replace_all('(f)oo([ld])', b'${1}u${2}'))],
+}
+-- want.txt --
+{
+	"find": [
+		"food",
+		"Zm9vZA=="
+	],
+	"find_all": [
+		[
+			"food",
+			"fool"
+		],
+		[
+			"Zm9vZA==",
+			"Zm9vbA=="
+		]
+	],
+	"find_all_submatch": [
+		[
+			[
+				"food",
+				"d"
+			],
+			[
+				"fool",
+				"l"
+			]
+		],
+		[
+			[
+				"Zm9vZA==",
+				"ZA=="
+			],
+			[
+				"Zm9vbA==",
+				"bA=="
+			]
+		]
+	],
+	"find_submatch": [
+		[
+			"food",
+			"d"
+		],
+		[
+			"Zm9vZA==",
+			"ZA=="
+		]
+	],
+	"match": [
+		true,
+		true
+	],
+	"replace_all": [
+		"fud ful",
+		"fud ful"
+	]
+}
