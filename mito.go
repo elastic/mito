@@ -156,6 +156,7 @@ var (
 		"text/upper":           toUpper,
 		"application/gzip":     func(r io.Reader) (io.Reader, error) { return gzip.NewReader(r) },
 		"application/x-ndjson": lib.NDJSON,
+		"application/zip":      lib.Zip,
 	}
 )
 

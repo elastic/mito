@@ -18,6 +18,7 @@
 package mito
 
 import (
+	"encoding/base64"
 	"flag"
 	"os"
 	"path/filepath"
@@ -47,8 +48,26 @@ func TestScripts(t *testing.T) {
 	p := testscript.Params{
 		Dir:           filepath.Join("testdata"),
 		UpdateScripts: *update,
+		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"base64": bas64decode,
+		},
 	}
 	testscript.Run(t, p)
+}
+
+func bas64decode(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("unsupported: ! cd")
+	}
+	if len(args) != 2 {
+		ts.Fatalf("usage: base64 src dst")
+	}
+	src, err := os.ReadFile(ts.MkAbs(args[0]))
+	ts.Check(err)
+	dst := make([]byte, base64.StdEncoding.DecodedLen(len(src)))
+	n, err := base64.StdEncoding.Decode(dst, src)
+	ts.Check(err)
+	ts.Check(os.WriteFile(ts.MkAbs(args[1]), dst[:n], 0o644))
 }
 
 func TestSend(t *testing.T) {
