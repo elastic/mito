@@ -1,0 +1,151 @@
+# Get the Zip file ready.
+base64 zip.base64 test.zip
+
+mito -use file,mime src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	file('test.zip', 'application/zip'),      // Extract directly.
+	file('test.zip').mime('application/zip'), // Extract from buffered bytes.
+]
+-- zip.base64 --
+UEsDBAoAAAAAADepjlQAAAAAAAAAAAAAAAAHABwAc3ViZGlyL1VUCQADAghYYgIIWGJ1eAsAAQTo
+AwAABOgDAABQSwMECgAAAAAAMKmOVLSv1wENAAAADQAAAAwAHABzdWJkaXIvYS50eHRVVAkAA/QH
+WGKBCFhidXgLAAEE6AMAAAToAwAAaGVsbG8gd29ybGQhClBLAwQKAAAAAABDqY5UAAAAAAAAAAAA
+AAAAEQAcAHN1YmRpci9zdWJzdWJkaXIvVVQJAAMWCFhiFghYYnV4CwABBOgDAAAE6AMAAFBLAwQK
+AAAAAABDqY5UhrSo1gYAAAAGAAAAFgAcAHN1YmRpci9zdWJzdWJkaXIvYy50eHRVVAkAAxYIWGKB
+CFhidXgLAAEE6AMAAAToAwAAd29yZHMKUEsDBAoAAAAAADepjlTOM/IOCwAAAAsAAAAMABwAc3Vi
+ZGlyL2IudHh0VVQJAAMCCFhigQhYYnV4CwABBOgDAAAE6AMAAGhlbGxvIGNlbCEKUEsBAh4DCgAA
+AAAAN6mOVAAAAAAAAAAAAAAAAAcAGAAAAAAAAAAQAP1BAAAAAHN1YmRpci9VVAUAAwIIWGJ1eAsA
+AQToAwAABOgDAABQSwECHgMKAAAAAAAwqY5UtK/XAQ0AAAANAAAADAAYAAAAAAABAAAAtIFBAAAA
+c3ViZGlyL2EudHh0VVQFAAP0B1hidXgLAAEE6AMAAAToAwAAUEsBAh4DCgAAAAAAQ6mOVAAAAAAA
+AAAAAAAAABEAGAAAAAAAAAAQAP1BlAAAAHN1YmRpci9zdWJzdWJkaXIvVVQFAAMWCFhidXgLAAEE
+6AMAAAToAwAAUEsBAh4DCgAAAAAAQ6mOVIa0qNYGAAAABgAAABYAGAAAAAAAAQAAALSB3wAAAHN1
+YmRpci9zdWJzdWJkaXIvYy50eHRVVAUAAxYIWGJ1eAsAAQToAwAABOgDAABQSwECHgMKAAAAAAA3
+qY5UzjPyDgsAAAALAAAADAAYAAAAAAABAAAAtIE1AQAAc3ViZGlyL2IudHh0VVQFAAMCCFhidXgL
+AAEE6AMAAAToAwAAUEsFBgAAAAAFAAUApAEAAIYBAAAAAA==
+-- want.txt --
+[
+	{
+		"Comment": "",
+		"File": [
+			{
+				"CRC32": 0,
+				"Comment": "",
+				"Data": "",
+				"Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": true,
+				"Modified": "2022-04-14T21:09:46+09:30",
+				"Name": "subdir/",
+				"NonUTF8": false,
+				"Size": 0
+			},
+			{
+				"CRC32": 30912436,
+				"Comment": "",
+				"Data": "aGVsbG8gd29ybGQhCg==",
+				"Extra": "VVQFAAP0B1hidXgLAAEE6AMAAAToAwAA",
+				"IsDir": false,
+				"Modified": "2022-04-14T21:09:32+09:30",
+				"Name": "subdir/a.txt",
+				"NonUTF8": false,
+				"Size": 13
+			},
+			{
+				"CRC32": 0,
+				"Comment": "",
+				"Data": "",
+				"Extra": "VVQFAAMWCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": true,
+				"Modified": "2022-04-14T21:10:06+09:30",
+				"Name": "subdir/subsubdir/",
+				"NonUTF8": false,
+				"Size": 0
+			},
+			{
+				"CRC32": 3601380486,
+				"Comment": "",
+				"Data": "d29yZHMK",
+				"Extra": "VVQFAAMWCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": false,
+				"Modified": "2022-04-14T21:10:06+09:30",
+				"Name": "subdir/subsubdir/c.txt",
+				"NonUTF8": false,
+				"Size": 6
+			},
+			{
+				"CRC32": 250753998,
+				"Comment": "",
+				"Data": "aGVsbG8gY2VsIQo=",
+				"Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": false,
+				"Modified": "2022-04-14T21:09:46+09:30",
+				"Name": "subdir/b.txt",
+				"NonUTF8": false,
+				"Size": 11
+			}
+		]
+	},
+	{
+		"Comment": "",
+		"File": [
+			{
+				"CRC32": 0,
+				"Comment": "",
+				"Data": "",
+				"Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": true,
+				"Modified": "2022-04-14T21:09:46+09:30",
+				"Name": "subdir/",
+				"NonUTF8": false,
+				"Size": 0
+			},
+			{
+				"CRC32": 30912436,
+				"Comment": "",
+				"Data": "aGVsbG8gd29ybGQhCg==",
+				"Extra": "VVQFAAP0B1hidXgLAAEE6AMAAAToAwAA",
+				"IsDir": false,
+				"Modified": "2022-04-14T21:09:32+09:30",
+				"Name": "subdir/a.txt",
+				"NonUTF8": false,
+				"Size": 13
+			},
+			{
+				"CRC32": 0,
+				"Comment": "",
+				"Data": "",
+				"Extra": "VVQFAAMWCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": true,
+				"Modified": "2022-04-14T21:10:06+09:30",
+				"Name": "subdir/subsubdir/",
+				"NonUTF8": false,
+				"Size": 0
+			},
+			{
+				"CRC32": 3601380486,
+				"Comment": "",
+				"Data": "d29yZHMK",
+				"Extra": "VVQFAAMWCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": false,
+				"Modified": "2022-04-14T21:10:06+09:30",
+				"Name": "subdir/subsubdir/c.txt",
+				"NonUTF8": false,
+				"Size": 6
+			},
+			{
+				"CRC32": 250753998,
+				"Comment": "",
+				"Data": "aGVsbG8gY2VsIQo=",
+				"Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
+				"IsDir": false,
+				"Modified": "2022-04-14T21:09:46+09:30",
+				"Name": "subdir/b.txt",
+				"NonUTF8": false,
+				"Size": 11
+			}
+		]
+	}
+]

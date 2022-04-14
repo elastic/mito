@@ -18,10 +18,12 @@
 package lib
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -224,4 +226,119 @@ func NDJSON(r io.Reader) ref.Val {
 		return types.NewErr("ndjson: %v", err)
 	}
 	return types.NewDynamicList(types.DefaultTypeAdapter, vals)
+}
+
+// Zip provides a file transform that returns a <map<dyn>> from an io.Reader
+// holding a zip archive data. It should be handed to the File or MIME lib with
+//
+//  File(map[string]interface{}{
+//  	"application/zip": lib.Zip,
+//  })
+//
+// or
+//
+//  MIME(map[string]interface{}{
+//  	"application/zip": lib.Zip,
+//  })
+//
+// It will then be able to be used in a file or mime call.
+//
+// The returned map reflects the structure of the Go zip.Reader struct.
+//
+// Example:
+//
+//     file('hello.zip', 'application/zip')
+//
+//     might return:
+//
+//     {
+//         "Comment": "hello zip file"
+//         "File": [
+//             {
+//                 "CRC32": 0,
+//                 "Comment": "",
+//                 "Data": "",
+//                 "Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
+//                 "IsDir": true,
+//                 "Modified": "2022-04-14T21:09:46+09:30",
+//                 "Name": "subdir/",
+//                 "NonUTF8": false,
+//                 "Size": 0
+//             },
+//             {
+//                 "CRC32": 30912436,
+//                 "Comment": "",
+//                 "Data": "aGVsbG8gd29ybGQhCg==",
+//                 "Extra": "VVQFAAP0B1hidXgLAAEE6AMAAAToAwAA",
+//                 "IsDir": false,
+//                 "Modified": "2022-04-14T21:09:32+09:30",
+//                 "Name": "subdir/a.txt",
+//                 "NonUTF8": false,
+//                 "Size": 13
+//             }
+//         ]
+//     }
+//
+// Note that the entire contents of the zip file is expanded into memory.
+func Zip(r io.Reader) ref.Val {
+	var z *zip.Reader
+	switch r := r.(type) {
+	case *os.File:
+		fi, err := r.Stat()
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+		z, err = zip.NewReader(r, fi.Size())
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+	default:
+		var buf bytes.Buffer
+		_, err := io.Copy(&buf, r)
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+		br := bytes.NewReader(buf.Bytes())
+		z, err = zip.NewReader(br, br.Size())
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+	}
+	return expandZip(z)
+}
+
+func expandZip(z *zip.Reader) ref.Val {
+	var files []map[string]interface{}
+	for _, f := range z.File {
+		rc, err := f.Open()
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, rc)
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+		err = rc.Close()
+		if err != nil {
+			return types.NewErr("zip: %s", err)
+		}
+		fh := f.FileHeader
+		fi := fh.FileInfo()
+		files = append(files, map[string]interface{}{
+			"Name":     fh.Name,
+			"Comment":  fh.Comment,
+			"IsDir":    fi.IsDir(),
+			"Size":     fi.Size(),
+			"NonUTF8":  fh.NonUTF8,
+			"Modified": fh.Modified,
+			"CRC32":    fh.CRC32,
+			"Extra":    fh.Extra,
+			"Data":     buf.Bytes(),
+		})
+	}
+	return types.DefaultTypeAdapter.NativeToValue(map[string]interface{}{
+		"File":    files,
+		"Comment": z.Comment,
+	})
 }

@@ -1,0 +1,19 @@
+# Get the gzip file ready.
+base64 gzip.base64 test.gz
+
+mito -use file,mime src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	string(file('test.gz', 'application/gzip')),      // Extract directly.
+	string(file('test.gz').mime('application/gzip')), // Extract from buffered bytes.
+]
+-- gzip.base64 --
+H4sIAPAQWGIAA8tIzcnJV0hOzVHkAgDOM/IOCwAAAA==
+-- want.txt --
+[
+	"hello cel!\n",
+	"hello cel!\n"
+]
