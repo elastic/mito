@@ -1,0 +1,60 @@
+mito -use limit,collections,time src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	{
+		"Rate-Limit-Limit": ["100"],
+		"Rate-Limit-Remaining": ["0"],
+		"Rate-Limit-Reset": ["50"]
+	}.as(h, rate_limit(h, 'draft')),
+	{
+		"Rate-Limit-Limit": ["5000"],
+		"Rate-Limit-Remaining": ["100"],
+		"Rate-Limit-Reset": ["36000"]
+	}.as(h, rate_limit(h, 'draft')),
+	{
+		"Rate-Limit-Limit": ["5000"],
+		"Rate-Limit-Remaining": ["100"],
+		"Rate-Limit-Reset": [timestamp("9999-12-31T23:59:59.999999999Z").format(time_layout.HTTP)]
+	}.as(h, rate_limit(h, 'draft')),
+	{
+		"Rate-Limit-Limit": ["5000, 1000;window=3600, 5000;window=86400"],
+		"Rate-Limit-Remaining": ["100"],
+		"Rate-Limit-Reset": ["36000"]
+	}.as(h, rate_limit(h, 'draft')),
+	{
+		"Rate-Limit-Limit": ['12, 12;window=1; burst=1000;policy="leaky bucket"'],
+		"Rate-Limit-Remaining": ["100"],
+		"Rate-Limit-Reset": ["36000"]
+	}.as(h, rate_limit(h, 'draft')),
+]
+-- want.txt --
+[
+	{
+		"burst": 1,
+		"headers": "Rate-Limit-Limit=\"100\" Rate-Limit-Remaining=\"0\" Rate-Limit-Reset=\"50\"",
+		"rate": 0
+	},
+	{
+		"burst": 1,
+		"headers": "Rate-Limit-Limit=\"5000\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"36000\"",
+		"rate": 0.002777777777777778
+	},
+	{
+		"burst": 1,
+		"headers": "Rate-Limit-Limit=\"5000\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"Fri, 31 Dec 9999 23:59:59 GMT\"",
+		"rate": 1.0842021724855044e-8
+	},
+	{
+		"burst": 1,
+		"headers": "Rate-Limit-Limit=\"5000, 1000;window=3600, 5000;window=86400\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"36000\"",
+		"rate": 0.0011574074074074073
+	},
+	{
+		"burst": 1000,
+		"headers": "Rate-Limit-Limit=\"12, 12;window=1; burst=1000;policy=\\\"leaky bucket\\\"\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"36000\"",
+		"rate": 100
+	}
+]

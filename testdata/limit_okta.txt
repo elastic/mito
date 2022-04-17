@@ -1,0 +1,59 @@
+mito -use limit,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+string(int(timestamp("9999-12-31T23:59:59.999999999Z"))).as(reset,
+[
+	{
+		"X-Rate-Limit-Limit": ["600"],
+		"X-Rate-Limit-Remaining": ["598"],
+		"X-Rate-Limit-Reset": [reset]
+	}.as(h, rate_limit(h, 'okta')),
+	{
+		"X-Rate-Limit-Limit": ["600"],
+		"X-Rate-Limit-Remaining": ["0"],
+		"X-Rate-Limit-Reset": [reset]
+	}.as(h, rate_limit(h, 'okta')),
+	{
+		"X-Rate-Limit-Limit": ["0"],
+		"X-Rate-Limit-Remaining": ["0"],
+		"X-Rate-Limit-Reset": [reset]
+	}.as(h, rate_limit(h, 'okta')),
+	{
+		"X-Rate-Limit-Limit": [""],
+		"X-Rate-Limit-Remaining": ["0"],
+		"X-Rate-Limit-Reset": [reset]
+	}.as(h, rate_limit(h, 'okta')),
+	{
+		"X-Rate-Limit-Limit": ["0"],
+		"X-Rate-Limit-Remaining": ["bad syntax"],
+		"X-Rate-Limit-Reset": [reset]
+	}.as(h, rate_limit(h, 'okta')),
+]
+)
+-- want.txt --
+[
+	{
+		"burst": 1,
+		"headers": "X-Rate-Limit-Limit=\"600\" X-Rate-Limit-Remaining=\"598\" X-Rate-Limit-Reset=\"253402300799\"",
+		"rate": 6.483528991463317e-8
+	},
+	{
+		"burst": 1,
+		"headers": "X-Rate-Limit-Limit=\"600\" X-Rate-Limit-Remaining=\"0\" X-Rate-Limit-Reset=\"253402300799\"",
+		"rate": 0
+	},
+	{
+		"burst": 1,
+		"headers": "X-Rate-Limit-Limit=\"0\" X-Rate-Limit-Remaining=\"0\" X-Rate-Limit-Reset=\"253402300799\"",
+		"rate": 0
+	},
+	{
+		"headers": "X-Rate-Limit-Limit=\"\" X-Rate-Limit-Remaining=\"0\" X-Rate-Limit-Reset=\"253402300799\""
+	},
+	{
+		"error": "strconv.ParseFloat: parsing \"bad syntax\": invalid syntax",
+		"headers": "X-Rate-Limit-Limit=\"0\" X-Rate-Limit-Remaining=\"bad syntax\" X-Rate-Limit-Reset=\"253402300799\""
+	}
+]

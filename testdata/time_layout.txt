@@ -7,6 +7,7 @@ time_layout
 -- want.txt --
 {
 	"ANSIC": "Mon Jan _2 15:04:05 2006",
+	"HTTP": "Mon, 02 Jan 2006 15:04:05 GMT",
 	"Kitchen": "3:04PM",
 	"Layout": "01/02 03:04:05PM '06 -0700",
 	"RFC1123": "Mon, 02 Jan 2006 15:04:05 MST",

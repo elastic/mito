@@ -18,6 +18,7 @@
 package lib
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/google/cel-go/cel"
@@ -105,7 +106,8 @@ import (
 //         "Stamp":       time.Stamp,
 //         "StampMilli":  time.StampMilli,
 //         "StampMicro":  time.StampMicro,
-//         "StampNano":   time.StampNano
+//         "StampNano":   time.StampNano,
+//         "HTTP":        http.TimeFormat
 //     }
 func Time() cel.EnvOption {
 	return cel.Lib(timeLib{})
@@ -169,6 +171,7 @@ func (timeLib) ProgramOptions() []cel.ProgramOption {
 				"StampMilli":  time.StampMilli,
 				"StampMicro":  time.StampMicro,
 				"StampNano":   time.StampNano,
+				"HTTP":        http.TimeFormat,
 			},
 		}),
 		cel.Functions(

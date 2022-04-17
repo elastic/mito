@@ -1,0 +1,90 @@
+mito -use limit,collections,time src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	{
+		"Rate-Limit-Limit": ["100"],
+		"Rate-Limit-Remaining": ["0"],
+		"Rate-Limit-Reset": ["50"]
+	}.as(h, rate_limit(h, 'Rate-Limit', true, true, duration('1s'), 100)),
+	{
+		"Rate-Limit-Limit": ["5000"],
+		"Rate-Limit-Remaining": ["100"],
+		"Rate-Limit-Reset": ["36000"]
+	}.as(h, rate_limit(h, 'Rate-Limit', true, true, duration('1s'), 100)),
+	{
+		"Rate-Limit-Limit": ["5000"],
+		"Rate-Limit-Remaining": ["100"],
+		"Rate-Limit-Reset": [timestamp("9999-12-31T23:59:59.999999999Z").format(time_layout.HTTP)]
+	}.as(h, rate_limit(h, 'Rate-Limit', true, true, duration('1s'), 100)),
+	{
+		"X-RateLimit-Limit": ["100"],
+		"X-RateLimit-Remaining": ["0"],
+		"X-RateLimit-Reset": ["50"]
+	}.as(h, rate_limit(h, 'X-RateLimit', false, true, duration('1s'), 100)),
+	{
+		"X-RateLimit-Limit": ["5000"],
+		"X-RateLimit-Remaining": ["100"],
+		"X-RateLimit-Reset": ["36000"]
+	}.as(h, rate_limit(h, 'X-RateLimit', false, true, duration('1s'), 100)),
+	{
+		"X-RateLimit-Limit": ["5000"],
+		"X-RateLimit-Remaining": ["100"],
+		"X-RateLimit-Reset": [timestamp("9999-12-31T23:59:59.999999999Z").format(time_layout.HTTP)]
+	}.as(h, rate_limit(h, 'X-RateLimit', false, true, duration('1s'), 100)),
+	{
+		"X-RateLimit-Limit": ["5000"],
+		"X-RateLimit-Remaining": ["100"],
+		"X-RateLimit-Reset": [string(int(timestamp("9999-12-31T23:59:59.999999999Z")))]
+	}.as(h, rate_limit(h, 'X-RateLimit', false, false, duration('1s'), 100)),
+	{
+		"X-RateLimit-Limit": ["5000"],
+		"X-RateLimit-Remaining": ["100"],
+		"X-RateLimit-Reset": [string(int(timestamp("9999-12-31T23:59:59.999999999Z")))]
+	}.as(h, rate_limit(h, 'X-RateLimit', false, true, duration('1s'), 100)),
+]
+-- want.txt --
+[
+	{
+		"burst": 100,
+		"headers": "Rate-Limit-Limit=\"100\" Rate-Limit-Remaining=\"0\" Rate-Limit-Reset=\"50\"",
+		"rate": 0
+	},
+	{
+		"burst": 100,
+		"headers": "Rate-Limit-Limit=\"5000\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"36000\"",
+		"rate": 0.002777777777777778
+	},
+	{
+		"burst": 100,
+		"headers": "Rate-Limit-Limit=\"5000\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"Fri, 31 Dec 9999 23:59:59 GMT\"",
+		"rate": 1.0842021724855044e-8
+	},
+	{
+		"burst": 100,
+		"headers": "X-RateLimit-Limit=\"100\" X-RateLimit-Remaining=\"0\" X-RateLimit-Reset=\"50\"",
+		"rate": 0
+	},
+	{
+		"burst": 100,
+		"headers": "X-RateLimit-Limit=\"5000\" X-RateLimit-Remaining=\"100\" X-RateLimit-Reset=\"36000\"",
+		"rate": 0.002777777777777778
+	},
+	{
+		"burst": 100,
+		"headers": "X-RateLimit-Limit=\"5000\" X-RateLimit-Remaining=\"100\" X-RateLimit-Reset=\"Fri, 31 Dec 9999 23:59:59 GMT\"",
+		"rate": 1.0842021724855044e-8
+	},
+	{
+		"burst": 100,
+		"headers": "X-RateLimit-Limit=\"5000\" X-RateLimit-Remaining=\"100\" X-RateLimit-Reset=\"253402300799\"",
+		"rate": 1.0842021724855044e-8
+	},
+	{
+		"burst": 100,
+		"headers": "X-RateLimit-Limit=\"5000\" X-RateLimit-Remaining=\"100\" X-RateLimit-Reset=\"253402300799\"",
+		"rate": 3.946294081967334e-10
+	}
+]
