@@ -220,7 +220,7 @@ import (
 //
 // Parse Query
 //
-// parse_url returns a map holding the details of the parsed query corresponding
+// parse_query returns a map holding the details of the parsed query corresponding
 // to the Go url.Values map:
 //
 //     <string>.parse_query() -> <map<string,<list<string>>>
