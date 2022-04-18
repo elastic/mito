@@ -9,27 +9,27 @@ string(int(timestamp("9999-12-31T23:59:59.999999999Z"))).as(reset,
 		"X-Rate-Limit-Limit": ["600"],
 		"X-Rate-Limit-Remaining": ["598"],
 		"X-Rate-Limit-Reset": [reset]
-	}.as(h, rate_limit(h, 'okta')),
+	}.as(h, rate_limit(h, 'okta', duration('1m'))),
 	{
 		"X-Rate-Limit-Limit": ["600"],
 		"X-Rate-Limit-Remaining": ["0"],
 		"X-Rate-Limit-Reset": [reset]
-	}.as(h, rate_limit(h, 'okta')),
+	}.as(h, rate_limit(h, 'okta', duration('1m'))),
 	{
 		"X-Rate-Limit-Limit": ["0"],
 		"X-Rate-Limit-Remaining": ["0"],
 		"X-Rate-Limit-Reset": [reset]
-	}.as(h, rate_limit(h, 'okta')),
+	}.as(h, rate_limit(h, 'okta', duration('1m'))),
 	{
 		"X-Rate-Limit-Limit": [""],
 		"X-Rate-Limit-Remaining": ["0"],
 		"X-Rate-Limit-Reset": [reset]
-	}.as(h, rate_limit(h, 'okta')),
+	}.as(h, rate_limit(h, 'okta', duration('1m'))),
 	{
 		"X-Rate-Limit-Limit": ["0"],
 		"X-Rate-Limit-Remaining": ["bad syntax"],
 		"X-Rate-Limit-Reset": [reset]
-	}.as(h, rate_limit(h, 'okta')),
+	}.as(h, rate_limit(h, 'okta', duration('1m'))),
 ]
 )
 -- want.txt --
@@ -37,17 +37,23 @@ string(int(timestamp("9999-12-31T23:59:59.999999999Z"))).as(reset,
 	{
 		"burst": 1,
 		"headers": "X-Rate-Limit-Limit=\"600\" X-Rate-Limit-Remaining=\"598\" X-Rate-Limit-Reset=\"253402300799\"",
-		"rate": 6.483528991463317e-8
+		"next": 10,
+		"rate": 6.483528991463317e-8,
+		"reset": "9999-12-31T23:59:59Z"
 	},
 	{
 		"burst": 1,
 		"headers": "X-Rate-Limit-Limit=\"600\" X-Rate-Limit-Remaining=\"0\" X-Rate-Limit-Reset=\"253402300799\"",
-		"rate": 0
+		"next": 10,
+		"rate": 0,
+		"reset": "9999-12-31T23:59:59Z"
 	},
 	{
 		"burst": 1,
 		"headers": "X-Rate-Limit-Limit=\"0\" X-Rate-Limit-Remaining=\"0\" X-Rate-Limit-Reset=\"253402300799\"",
-		"rate": 0
+		"next": 0,
+		"rate": 0,
+		"reset": "9999-12-31T23:59:59Z"
 	},
 	{
 		"headers": "X-Rate-Limit-Limit=\"\" X-Rate-Limit-Remaining=\"0\" X-Rate-Limit-Reset=\"253402300799\""
