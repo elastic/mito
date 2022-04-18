@@ -73,8 +73,8 @@ import (
 // layouts. If a list of formats is provided, the first successful layout is
 // used:
 //
-//     <string>.format(<string>) -> <timestamp>
-//     <string>.format(<list<string>>) -> <timestamp>
+//     <string>.parse_time(<string>) -> <timestamp>
+//     <string>.parse_time(<list<string>>) -> <timestamp>
 //
 // Examples:
 //
