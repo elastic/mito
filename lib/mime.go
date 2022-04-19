@@ -21,6 +21,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"io"
 	"os"
@@ -141,6 +142,95 @@ func (t transformReader) Read(p []byte) (int, error) {
 	n, err := t.r.Read(p)
 	t.transform(p[:n])
 	return n, err
+}
+
+// CSVHeader provides a file transform that returns a <list<map<string,string>>> from an
+// io.Reader holding text/csv data. It should be handed to the File or MIME
+// lib with
+//
+//  File(map[string]interface{}{
+//  	"text/csv; header=present": lib.CSVHeader,
+//  })
+//
+// or
+//
+//  MIME(map[string]interface{}{
+//  	"text/csv; header=present": lib.CSVHeader,
+//  })
+//
+// It will then be able to be used in a file or mime call.
+//
+// Example:
+//
+//     Given a file hello.csv:
+//        "first","second","third"
+//        1,2,3
+//
+//     file('hello.csv', 'text/csv; header=present')
+//
+//     will return:
+//
+//     [{"first": "1", "second": "2", "third": "3"}]
+//
+func CSVHeader(r io.Reader) ref.Val {
+	var vals []map[string]string
+	cr := csv.NewReader(r)
+	var h []string
+	for i := 0; ; i++ {
+		rec, err := cr.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return types.NewErr("csv: %v", err)
+		}
+		if i == 0 {
+			h = rec
+			continue
+		}
+		v := make(map[string]string, len(h))
+		for j, n := range h {
+			v[n] = rec[j]
+		}
+		vals = append(vals, v)
+	}
+	return types.NewDynamicList(types.DefaultTypeAdapter, vals)
+}
+
+// CSVNoHeader provides a file transform that returns a <list<list<string>>> from an
+// io.Reader holding text/csv data. It should be handed to the File or MIME
+// lib with
+//
+//  File(map[string]interface{}{
+//  	"text/csv; header=absent": lib.CSVNoHeader,
+//  })
+//
+// or
+//
+//  MIME(map[string]interface{}{
+//  	"text/csv; header=absent": lib.CSVNoHeader,
+//  })
+//
+// It will then be able to be used in a file or mime call.
+//
+// Example:
+//
+//     Given a file hello.csv:
+//        "first","second","third"
+//        1,2,3
+//
+//     file('hello.csv', 'text/csv; header=absent')
+//
+//     will return:
+//
+//     [["first", "second", "third"], ["1", "2", "3"]]
+//
+func CSVNoHeader(r io.Reader) ref.Val {
+	vals, err := csv.NewReader(r).ReadAll()
+	if err != nil {
+		return types.NewErr("csv: %v", err)
+	}
+	return types.NewDynamicList(types.DefaultTypeAdapter, vals)
 }
 
 // NDJSON provides a file transform that returns a <list<dyn>> from an

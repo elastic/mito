@@ -153,11 +153,13 @@ var (
 	}
 
 	mimetypes = map[string]interface{}{
-		"text/rot13":           func(r io.Reader) io.Reader { return rot13{r} },
-		"text/upper":           toUpper,
-		"application/gzip":     func(r io.Reader) (io.Reader, error) { return gzip.NewReader(r) },
-		"application/x-ndjson": lib.NDJSON,
-		"application/zip":      lib.Zip,
+		"text/rot13":               func(r io.Reader) io.Reader { return rot13{r} },
+		"text/upper":               toUpper,
+		"application/gzip":         func(r io.Reader) (io.Reader, error) { return gzip.NewReader(r) },
+		"text/csv; header=present": lib.CSVHeader,
+		"text/csv; header=absent":  lib.CSVNoHeader,
+		"application/x-ndjson":     lib.NDJSON,
+		"application/zip":          lib.Zip,
 	}
 
 	limitPolicies = map[string]lib.LimitPolicy{
