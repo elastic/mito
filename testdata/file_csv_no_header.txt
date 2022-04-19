@@ -1,0 +1,40 @@
+mito -use file src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+file('hello.csv', 'text/csv; header=absent')
+-- hello.csv --
+"first","second","third"
+1,2,3
+4,5,6
+7,8,9
+a,b,c
+-- want.txt --
+[
+	[
+		"first",
+		"second",
+		"third"
+	],
+	[
+		"1",
+		"2",
+		"3"
+	],
+	[
+		"4",
+		"5",
+		"6"
+	],
+	[
+		"7",
+		"8",
+		"9"
+	],
+	[
+		"a",
+		"b",
+		"c"
+	]
+]
