@@ -58,6 +58,8 @@ github.com/google/cel-go v0.11.3-0.20220411175735-560fc9d458c7 h1:EqRnRCiTKvZ+mC
 github.com/google/cel-go v0.11.3-0.20220411175735-560fc9d458c7/go.mod h1:drz+knCRsctDZ180KZHwIEEUb9IdK/nxPoyhxi+O1K0=
 github.com/google/cel-go v0.11.3 h1:MnUpbcMtr/eA8vRTEYSru+fyCAgGUYLrY/49vUvphbI=
 github.com/google/cel-go v0.11.3/go.mod h1:Av7CU6r6X3YmcHR9GXqVDaEJYfEtSxl6wvIjUQTriCw=
+github.com/google/cel-go v0.11.4 h1:wWOnKmLxALl3l9Av221MfIOWRiR01sDVljzg6LZ6Zn0=
+github.com/google/cel-go v0.11.4/go.mod h1:Av7CU6r6X3YmcHR9GXqVDaEJYfEtSxl6wvIjUQTriCw=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
 github.com/google/go-cmp v0.3.0/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
 github.com/google/go-cmp v0.3.1/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
