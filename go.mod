@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.11.3
+	github.com/google/cel-go v0.11.4
 	github.com/google/go-cmp v0.5.7
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.8.1
