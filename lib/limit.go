@@ -292,7 +292,7 @@ func OktaRateLimit(h http.Header, window time.Duration) map[string]interface{} {
 //         "reset": "2022-04-16T07:48:40Z"
 //     }
 //
-// See https://tools.ietf.org/id/draft-polli-ratelimit-headers-00.html
+// See https://datatracker.ietf.org/doc/html/draft-polli-ratelimit-headers-00
 func DraftRateLimit(h http.Header, window time.Duration) map[string]interface{} {
 	limit := h.Get("Rate-Limit-Limit")
 	remaining := h.Get("Rate-Limit-Remaining")
