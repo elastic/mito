@@ -118,7 +118,7 @@ import (
 // recursively
 //
 //     <list<dyn>>.drop_empty() -> <list<dyn>>
-//     <map<string,dyn>>.drop() -> <map<string,dyn>>
+//     <map<string,dyn>>.drop_empty() -> <map<string,dyn>>
 //
 // Examples:
 //
