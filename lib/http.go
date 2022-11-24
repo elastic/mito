@@ -143,7 +143,7 @@ import (
 //
 // Example:
 //
-//     request("GET", "http://www.example.com/").with({"header":{
+//     request("GET", "http://www.example.com/").with({"Header":{
 //         "Authorization": "Basic "+string(base64("username:password")),
 //     }})
 //
@@ -152,16 +152,15 @@ import (
 //     {
 //         "Close": false,
 //         "ContentLength": 0,
-//         "Header": {},
+//         "Header": {
+//             "Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+//         },
 //         "Host": "www.example.com",
 //         "Method": "GET",
 //         "Proto": "HTTP/1.1",
 //         "ProtoMajor": 1,
 //         "ProtoMinor": 1,
-//         "URL": "http://www.example.com/",
-//         "header": {
-//             "Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
-//         }
+//         "URL": "http://www.example.com/"
 //     }
 //
 //
