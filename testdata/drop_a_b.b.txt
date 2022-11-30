@@ -8,13 +8,18 @@ cmp stdout want.txt
 		{"b": 1},
 		{"b": 2},
 		{"b": 3}
-    ],
-    "b": [
+	],
+	"b": [
 		{"b": -1, "c": 10},
 		{"b": -2, "c": 20},
 		{"b": -3, "c": 30}
-    ]
-}.drop(["a","b.b"])
+	],
+	"b.b": "don't drop",
+	"drop.this": {
+		"path": true,
+		"keep": true
+	}
+}.drop(["a","b.b","drop\\.this.path"])
 -- want.txt --
 {
 	"b": [
@@ -27,5 +32,9 @@ cmp stdout want.txt
 		{
 			"c": 30
 		}
-	]
+	],
+	"b.b": "don't drop",
+	"drop.this": {
+		"keep": true
+	}
 }

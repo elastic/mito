@@ -80,6 +80,9 @@ import (
 //     v.collate(["a.b", "b.b"])  // return [1, 2, 3, -1, -2, -3]
 //     v.collate(["a", "b.b"])    // return [{"b": 1 }, {"b": 2 }, {"b": 3 }, -1, -2, -3 ]
 //
+// If the the path to be dropped includes a dot, it can be escaped with a literal
+// backslash. See drop below.
+//
 //
 // Drop
 //
@@ -110,6 +113,22 @@ import (
 //     v.drop("a.b")           // return {"a": [{}, {}, {}], "b": [{"b": -1, "c": 10}, {"b": -2, "c": 20}, {"b": -3, "c": 30}]}
 //     v.drop(["a.b", "b.b"])  // return {"a": [{}, {}, {}], "b": [{"c": 10}, {"c": 20}, {"c": 30}]}
 //     v.drop(["a", "b.b"])    // return {"b": [{"c": 10}, {"c": 20}, {"c": 30}]}
+//
+// If the the path to be dropped includes a dot, it can be escaped with a literal
+// backslash.
+//
+// Examples:
+//
+//     Given v:
+//     {
+//             "dotted.path": [
+//                 {"b": -1, "c": 10},
+//                 {"b": -2, "c": 20},
+//                 {"b": -3, "c": 30}
+//             ]
+//     }
+//
+//     v.drop("dotted\\.path.b")  // return {"dotted.path": [{"c": 10}, {"c": 20}, {"c": 30}]}
 //
 //
 // Drop Empty
@@ -665,7 +684,7 @@ func dropFieldPath(arg ref.Val, path types.String) (val ref.Val) {
 		return types.NewRefValList(types.DefaultTypeAdapter, new)
 
 	case traits.Mapper:
-		dotIdx := strings.Index(string(path), ".")
+		dotIdx, escaped := pathSepIndex(string(path))
 		switch {
 		case dotIdx == 0, dotIdx == len(path)-1:
 			return types.NewErr("invalid parameter path for drop: %s", path)
@@ -690,6 +709,9 @@ func dropFieldPath(arg ref.Val, path types.String) (val ref.Val) {
 				return types.NewErr("unable to convert map to native: %v", err)
 			}
 			head := path[:dotIdx]
+			if escaped {
+				head = types.String(strings.ReplaceAll(string(head), `\.`, "."))
+			}
 			tail := path[dotIdx+1:]
 			for k, v := range m.(map[ref.Val]ref.Val) {
 				if k.Equal(head) == types.True {
@@ -718,7 +740,7 @@ func hasFieldPath(arg ref.Val, path types.String) bool {
 		return false
 
 	case traits.Mapper:
-		dotIdx := strings.Index(string(path), ".")
+		dotIdx, escaped := pathSepIndex(string(path))
 		switch {
 		case dotIdx == 0, dotIdx == len(path)-1:
 			panic(types.NewErr("invalid parameter path for drop: %s", path))
@@ -741,6 +763,9 @@ func hasFieldPath(arg ref.Val, path types.String) bool {
 				panic(types.NewErr("unable to convert map to native: %v", err))
 			}
 			head := path[:dotIdx]
+			if escaped {
+				head = types.String(strings.ReplaceAll(string(head), `\.`, "."))
+			}
 			tail := path[dotIdx+1:]
 			for k, v := range m.(map[ref.Val]ref.Val) {
 				if k.Equal(head) == types.True {
@@ -793,7 +818,7 @@ func collateFieldPath(arg ref.Val, path types.String) []ref.Val {
 		return collation
 
 	case traits.Mapper:
-		dotIdx := strings.Index(string(path), ".")
+		dotIdx, escaped := pathSepIndex(string(path))
 		switch {
 		case dotIdx == 0, dotIdx == len(path)-1:
 			panic(types.NewErr("invalid parameter path for drop: %s", path))
@@ -823,6 +848,9 @@ func collateFieldPath(arg ref.Val, path types.String) []ref.Val {
 				panic(types.NewErr("unable to convert map to native: %v", err))
 			}
 			head := path[:dotIdx]
+			if escaped {
+				head = types.String(strings.ReplaceAll(string(head), `\.`, "."))
+			}
 			tail := path[dotIdx+1:]
 			for k, v := range m.(map[ref.Val]ref.Val) {
 				if k.Equal(head) == types.True {
@@ -887,4 +915,22 @@ func makeAs(eh parser.ExprHelper, target *expr.Expr, args []*expr.Expr) (*expr.E
 	step := eh.GlobalCall(operators.Add, accuExpr, eh.NewList(fn))
 	fold := eh.Fold(label, target, parser.AccumulatorName, init, condition, step, accuExpr)
 	return eh.GlobalCall(operators.Index, fold, eh.LiteralInt(0)), nil
+}
+
+// pathSepIndex returns the offset to a non-escaped dot path separator and
+// whether the path element before the separator contains a backslash-escaped
+// path separator.
+func pathSepIndex(s string) (off int, escaped bool) {
+	for {
+		idx := strings.IndexByte(s[off:], '.')
+		if idx == -1 {
+			return -1, escaped
+		}
+		off += idx
+		if idx == 0 || s[off-1] != '\\' {
+			return off, escaped
+		}
+		off++
+		escaped = true
+	}
 }
