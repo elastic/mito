@@ -251,6 +251,12 @@ import (
 //     line=25&page=2"
 //
 func HTTP(client *http.Client, limit *rate.Limiter) cel.EnvOption {
+	return HTTPWithContext(context.Background(), client, limit)
+}
+
+// HTTP returns a cel.EnvOption to configure extended functions for HTTP
+// requests that include a context.Context in network requests.
+func HTTPWithContext(ctx context.Context, client *http.Client, limit *rate.Limiter) cel.EnvOption {
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -260,12 +266,14 @@ func HTTP(client *http.Client, limit *rate.Limiter) cel.EnvOption {
 	return cel.Lib(httpLib{
 		client: client,
 		limit:  limit,
+		ctx:    ctx,
 	})
 }
 
 type httpLib struct {
 	client *http.Client
 	limit  *rate.Limiter
+	ctx    context.Context
 }
 
 func (httpLib) CompileOptions() []cel.EnvOption {
@@ -468,7 +476,7 @@ func (l httpLib) doHead(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	resp, err := l.client.Head(string(url))
+	resp, err := l.head(url)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -477,6 +485,14 @@ func (l httpLib) doHead(arg ref.Val) ref.Val {
 		return types.NewErr("%s", err)
 	}
 	return types.DefaultTypeAdapter.NativeToValue(rm)
+}
+
+func (l httpLib) head(url types.String) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(l.ctx, http.MethodHead, string(url), nil)
+	if err != nil {
+		return nil, err
+	}
+	return l.client.Do(req)
 }
 
 func (l httpLib) doGet(arg ref.Val) ref.Val {
@@ -488,7 +504,7 @@ func (l httpLib) doGet(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	resp, err := l.client.Get(string(url))
+	resp, err := l.get(url)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -497,6 +513,14 @@ func (l httpLib) doGet(arg ref.Val) ref.Val {
 		return types.NewErr("%s", err)
 	}
 	return types.DefaultTypeAdapter.NativeToValue(rm)
+}
+
+func (l httpLib) get(url types.String) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(l.ctx, http.MethodGet, string(url), nil)
+	if err != nil {
+		return nil, err
+	}
+	return l.client.Do(req)
 }
 
 func newGetRequest(url ref.Val) ref.Val {
@@ -532,7 +556,7 @@ func (l httpLib) doPost(args ...ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	resp, err := l.client.Post(string(url), string(content), body)
+	resp, err := l.post(url, content, body)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -541,6 +565,15 @@ func (l httpLib) doPost(args ...ref.Val) ref.Val {
 		return types.NewErr("%s", err)
 	}
 	return types.DefaultTypeAdapter.NativeToValue(rm)
+}
+
+func (l httpLib) post(url, content types.String, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(l.ctx, http.MethodPost, string(url), body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", string(content))
+	return l.client.Do(req)
 }
 
 func newPostRequest(args ...ref.Val) ref.Val {
@@ -703,8 +736,8 @@ func (l httpLib) doRequest(arg ref.Val) ref.Val {
 		return types.NewErr("%s", err)
 	}
 	// Recover the context lost during serialisation to JSON.
-	req = req.WithContext(context.Background())
-	err = l.limit.Wait(context.TODO())
+	req = req.WithContext(l.ctx)
+	err = l.limit.Wait(l.ctx)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
