@@ -148,7 +148,7 @@ var (
 		"try":         lib.Try(),
 		"file":        lib.File(mimetypes),
 		"mime":        lib.MIME(mimetypes),
-		"http":        lib.HTTP(nil, nil),
+		"http":        lib.HTTP(nil, nil, nil),
 		"limit":       lib.Limit(limitPolicies),
 		"strings":     lib.Strings(),
 	}
