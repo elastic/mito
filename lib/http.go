@@ -42,7 +42,10 @@ import (
 // the Go http.Request and http.Response structs. The client and limit parameters
 // will be used for the requests and API rate limiting. If client is nil
 // the http.DefaultClient will be used and if limit is nil an non-limiting
-// rate.Limiter will be used.
+// rate.Limiter will be used. If auth is not nil, the Authorization header
+// is populated for Basic Authentication in requests constructed for direct
+// HEAD, GET and POST method calls. Explicitly constructed requests used in
+// do_request are not affected by auth.
 //
 // HEAD
 //
@@ -68,9 +71,9 @@ import (
 //
 // GET Request
 //
-// get returns a GET method request:
+// get_request returns a GET method request:
 //
-//     get(<string>) -> <map<string,dyn>>
+//     get_request(<string>) -> <map<string,dyn>>
 //
 // Example:
 //
@@ -112,7 +115,7 @@ import (
 //
 // Example:
 //
-//     post("http://www.example.com/", "text/plain", "test")
+//     post_request("http://www.example.com/", "text/plain", "test")
 //
 //     will return:
 //
@@ -250,13 +253,13 @@ import (
 //
 //     line=25&page=2"
 //
-func HTTP(client *http.Client, limit *rate.Limiter) cel.EnvOption {
-	return HTTPWithContext(context.Background(), client, limit)
+func HTTP(client *http.Client, limit *rate.Limiter, auth *BasicAuth) cel.EnvOption {
+	return HTTPWithContext(context.Background(), client, limit, auth)
 }
 
-// HTTP returns a cel.EnvOption to configure extended functions for HTTP
-// requests that include a context.Context in network requests.
-func HTTPWithContext(ctx context.Context, client *http.Client, limit *rate.Limiter) cel.EnvOption {
+// HTTPWithContext returns a cel.EnvOption to configure extended functions
+// for HTTP requests that include a context.Context in network requests.
+func HTTPWithContext(ctx context.Context, client *http.Client, limit *rate.Limiter, auth *BasicAuth) cel.EnvOption {
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -266,6 +269,7 @@ func HTTPWithContext(ctx context.Context, client *http.Client, limit *rate.Limit
 	return cel.Lib(httpLib{
 		client: client,
 		limit:  limit,
+		auth:   auth,
 		ctx:    ctx,
 	})
 }
@@ -273,7 +277,15 @@ func HTTPWithContext(ctx context.Context, client *http.Client, limit *rate.Limit
 type httpLib struct {
 	client *http.Client
 	limit  *rate.Limiter
+	auth   *BasicAuth
 	ctx    context.Context
+}
+
+// BasicAuth is used to populate the Authorization header to use HTTP
+// Basic Authentication with the provided username and password for
+// direct HTTP method calls.
+type BasicAuth struct {
+	Username, Password string
 }
 
 func (httpLib) CompileOptions() []cel.EnvOption {
@@ -492,6 +504,9 @@ func (l httpLib) head(url types.String) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	if l.auth != nil {
+		req.SetBasicAuth(l.auth.Username, l.auth.Password)
+	}
 	return l.client.Do(req)
 }
 
@@ -519,6 +534,9 @@ func (l httpLib) get(url types.String) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(l.ctx, http.MethodGet, string(url), nil)
 	if err != nil {
 		return nil, err
+	}
+	if l.auth != nil {
+		req.SetBasicAuth(l.auth.Username, l.auth.Password)
 	}
 	return l.client.Do(req)
 }
@@ -571,6 +589,9 @@ func (l httpLib) post(url, content types.String, body io.Reader) (*http.Response
 	req, err := http.NewRequestWithContext(l.ctx, http.MethodPost, string(url), body)
 	if err != nil {
 		return nil, err
+	}
+	if l.auth != nil {
+		req.SetBasicAuth(l.auth.Username, l.auth.Password)
 	}
 	req.Header.Set("Content-Type", string(content))
 	return l.client.Do(req)
