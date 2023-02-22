@@ -150,6 +150,7 @@ var (
 		"mime":        lib.MIME(mimetypes),
 		"http":        lib.HTTP(nil, nil),
 		"limit":       lib.Limit(limitPolicies),
+		"strings":     lib.Strings(),
 	}
 
 	mimetypes = map[string]interface{}{
