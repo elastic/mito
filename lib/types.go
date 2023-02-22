@@ -35,6 +35,7 @@ var (
 	mapKV        = decls.NewMapType(typeK, typeV)
 	mapStringDyn = decls.NewMapType(decls.String, decls.Dyn)
 	listV        = decls.NewListType(typeV)
+	listString   = decls.NewListType(decls.String)
 )
 
 // Types used for conversion to native.

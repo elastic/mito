@@ -1,0 +1,294 @@
+mito -cfg cfg.yaml -use strings,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- cfg.yaml --
+regexp:
+  "dummy": "."
+-- src.cel --
+{
+	"func Compare(a, b string) int":[
+		"a".compare("b"),
+		"a".compare("a"),
+		"b".compare("a"),
+	],
+	"func Contains(s, substr string) bool":[
+		"food".contains_substr("foo"),
+		"food".contains_substr("bar"),
+	],
+	"func ContainsAny(s, chars string) bool":[
+		"food".contains_any("fud"),
+		"food".contains_any("bar"),
+	],
+	"func Count(s, substr string) int":[
+		"food".count("x"),
+		"food".count("o"),
+	],
+	"func EqualFold(s, t string) bool":[
+		"food".equal_fold("FOOD"),
+	],
+	"func Fields(s string) []string":[
+		" one two\tthree     four       ".fields(),
+	],
+	"func HasPrefix(s, prefix string) bool":[
+		"food".has_prefix("foo"),
+		"food".has_prefix("bar"),
+	],
+	"func HasSuffix(s, suffix string) bool":[
+		"food".has_suffix("ood"),
+		"food".has_suffix("bar"),
+	],
+	"func Index(s, substr string) int":[
+		"find me in this string".index("me") == 5,
+		"find me in this string".index("you") == -1,
+	],
+	"func IndexAny(s, chars string) int":[
+		"find me in this string".index_any("not me") == 2, // n in find.
+		"find me in this string".index_any("z") == -1,
+	],
+	"func Join(elems []string, sep string) string":[
+		["one", "two", "three"].join("-"),
+	],
+	"func LastIndex(s, substr string) int":[
+		"find me or me in this string".last_index("me") == 11,
+		"find me or me in this string".last_index("you") == -1,
+	],
+	"func LastIndexAny(s, chars string) int":[
+		"find me or me in this string".last_index_any("is") == 25, // i in string
+		"find me or me in this string".last_index_any("z") == -1,
+	],
+	"func Repeat(s string, count int) string":[
+		"<little-pig>".repeat(3),
+	],
+	"func Replace(s, old, new string, n int) string":[
+		"replace this and this".replace("this", "that", 1),
+	],
+	"func ReplaceAll(s, old, new string) string":[
+		"replace this and this".replace_all("this", "that"),
+	],
+	"func Split(s, sep string) []string":[
+		"1:2:3:4".split(":"),
+	],
+	"func SplitAfter(s, sep string) []string":[
+		"1:2:3:4".split_after(":"),
+	],
+	"func SplitAfterN(s, sep string, n int) []string":[
+		"1:2:3:4".split_after_n(":", 2),
+	],
+	"func SplitN(s, sep string, n int) []string":[
+		"1:2:3:4".split_n(":", 2),
+	],
+	"substring":[
+		// ASCII
+		size("01234567890"),
+		"01234567890".substring(0, 0),
+		"01234567890".substring(1, 4),
+		"01234567890".substring(0, 8),
+		"01234567890".substring(11, 11),
+		try("01234567890".substring(-1, 8)),
+		try("01234567890".substring(0, -1)),
+		try("01234567890".substring(11, 12)),
+		try("01234567890".substring(0, 12)),
+		try("01234567890".substring(10, 12)),
+		// Non-ASCII
+		size("零一二三四五六七八九十"),
+		"零一二三四五六七八九十".substring(0, 0),
+		"零一二三四五六七八九十".substring(1, 4),
+		"零一二三四五六七八九十".substring(0, 8),
+		"零一二三四五六七八九十".substring(11, 11),
+		try("零一二三四五六七八九十".substring(-1, 8)),
+		try("零一二三四五六七八九十".substring(0, -1)),
+		try("零一二三四五六七八九十".substring(11, 12)),
+		try("零一二三四五六七八九十".substring(0, 12)),
+		try("零一二三四五六七八九十".substring(10, 12)),
+	],
+	"func ToLower(s string) string":[
+		"lEopArds".to_lower(),
+	],
+	"func ToTitle(s string) string":[
+		"lEopArds".to_title(),
+	],
+	"func ToUpper(s string) string":[
+		"lEopArds".to_upper(),
+	],
+	"func ToValidUTF8(s, replacement string) string":[
+		b"good".to_valid_utf8("‽"),
+		b"b\xc5d".to_valid_utf8("‽"),
+	],
+	"func Trim(s, cutset string) string":[
+		"abacabactextcbacabca".trim("abc"),
+	],
+	"func TrimLeft(s, cutset string) string":[
+		"abacabactextcbacabca".trim_left("abc"),
+	],
+	"func TrimPrefix(s, prefix string) string":[
+		"prefixinfixsuffix".trim_prefix("prefix"),
+	],
+	"func TrimRight(s, cutset string) string":[
+		"abacabactextcbacabca".trim_right("abc"),
+	],
+	"func TrimSpace(s string) string":[
+		"\n   text \t \n\r\n".trim_space(),
+	],
+	"func TrimSuffix(s, suffix string) string":[
+		"prefixinfixsuffix".trim_suffix("suffix"),
+	],
+	"func utf8.Valid(s []byte) bool":[
+		b"good".valid_utf8(),
+		b"b\xc5d".valid_utf8(),
+		try(string(b"b\xc5d")), // Note to show it is not possible to get an invalid string.
+	],
+}
+-- want.txt --
+{
+	"func Compare(a, b string) int": [
+		-1,
+		0,
+		1
+	],
+	"func Contains(s, substr string) bool": [
+		true,
+		false
+	],
+	"func ContainsAny(s, chars string) bool": [
+		true,
+		false
+	],
+	"func Count(s, substr string) int": [
+		0,
+		2
+	],
+	"func EqualFold(s, t string) bool": [
+		true
+	],
+	"func Fields(s string) []string": [
+		[
+			"one",
+			"two",
+			"three",
+			"four"
+		]
+	],
+	"func HasPrefix(s, prefix string) bool": [
+		true,
+		false
+	],
+	"func HasSuffix(s, suffix string) bool": [
+		true,
+		false
+	],
+	"func Index(s, substr string) int": [
+		true,
+		true
+	],
+	"func IndexAny(s, chars string) int": [
+		true,
+		true
+	],
+	"func Join(elems []string, sep string) string": [
+		"one-two-three"
+	],
+	"func LastIndex(s, substr string) int": [
+		true,
+		true
+	],
+	"func LastIndexAny(s, chars string) int": [
+		true,
+		true
+	],
+	"func Repeat(s string, count int) string": [
+		"<little-pig><little-pig><little-pig>"
+	],
+	"func Replace(s, old, new string, n int) string": [
+		"replace that and this"
+	],
+	"func ReplaceAll(s, old, new string) string": [
+		"replace that and that"
+	],
+	"func Split(s, sep string) []string": [
+		[
+			"1",
+			"2",
+			"3",
+			"4"
+		]
+	],
+	"func SplitAfter(s, sep string) []string": [
+		[
+			"1:",
+			"2:",
+			"3:",
+			"4"
+		]
+	],
+	"func SplitAfterN(s, sep string, n int) []string": [
+		[
+			"1:",
+			"2:3:4"
+		]
+	],
+	"func SplitN(s, sep string, n int) []string": [
+		[
+			"1",
+			"2:3:4"
+		]
+	],
+	"func ToLower(s string) string": [
+		"leopards"
+	],
+	"func ToTitle(s string) string": [
+		"LEOPARDS"
+	],
+	"func ToUpper(s string) string": [
+		"LEOPARDS"
+	],
+	"func ToValidUTF8(s, replacement string) string": [
+		"good",
+		"b‽d"
+	],
+	"func Trim(s, cutset string) string": [
+		"text"
+	],
+	"func TrimLeft(s, cutset string) string": [
+		"textcbacabca"
+	],
+	"func TrimPrefix(s, prefix string) string": [
+		"infixsuffix"
+	],
+	"func TrimRight(s, cutset string) string": [
+		"abacabactext"
+	],
+	"func TrimSpace(s string) string": [
+		"text"
+	],
+	"func TrimSuffix(s, suffix string) string": [
+		"prefixinfix"
+	],
+	"func utf8.Valid(s []byte) bool": [
+		true,
+		false,
+		"invalid UTF-8 in bytes, cannot convert to string"
+	],
+	"substring": [
+		11,
+		"",
+		"123",
+		"01234567",
+		"",
+		"substring: start out of range: -1 < 0",
+		"substring: end out of range: -1 < 0",
+		"substring: end out of range: 12 > 11",
+		"substring: end out of range: 12 > 11",
+		"substring: end out of range: 12 > 11",
+		11,
+		"",
+		"一二三",
+		"零一二三四五六七",
+		"",
+		"substring: start out of range: -1 < 0",
+		"substring: end out of range: -1 < 0",
+		"substring: end out of range: 12 > 11",
+		"substring: end out of range: 12 > 11",
+		"substring: end out of range: 12 > 11"
+	]
+}
