@@ -20,6 +20,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -45,7 +46,9 @@ import (
 // rate.Limiter will be used. If auth is not nil, the Authorization header
 // is populated for Basic Authentication in requests constructed for direct
 // HEAD, GET and POST method calls. Explicitly constructed requests used in
-// do_request are not affected by auth.
+// do_request are not affected by auth. In cases where Basic Authentication
+// is needed for these constructed requests, the basic_authentication method
+// can be used to add the necessary header.
 //
 // HEAD
 //
@@ -147,7 +150,7 @@ import (
 // Example:
 //
 //     request("GET", "http://www.example.com/").with({"Header":{
-//         "Authorization": "Basic "+string(base64("username:password")),
+//         "Authorization": ["Basic "+string(base64("username:password"))],
 //     }})
 //
 //     will return:
@@ -156,7 +159,39 @@ import (
 //         "Close": false,
 //         "ContentLength": 0,
 //         "Header": {
-//             "Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+//             "Authorization": [
+//                 "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+//             ]
+//         },
+//         "Host": "www.example.com",
+//         "Method": "GET",
+//         "Proto": "HTTP/1.1",
+//         "ProtoMajor": 1,
+//         "ProtoMinor": 1,
+//         "URL": "http://www.example.com/"
+//     }
+//
+//
+// Basic Authentication
+//
+// basic_authentication adds a Basic Authentication Authorization header to a request,
+// returning the modified request.
+//
+//     <map<string,dyn>>.basic_authentication(<string>, <string>) -> <map<string,dyn>>
+//
+// Example:
+//
+//     request("GET", "http://www.example.com/").basic_authentication("username", "password")
+//
+//     will return:
+//
+//     {
+//         "Close": false,
+//         "ContentLength": 0,
+//         "Header": {
+//             "Authorization": [
+//                 "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+//             ]
 //         },
 //         "Host": "www.example.com",
 //         "Method": "GET",
@@ -353,6 +388,13 @@ func (httpLib) CompileOptions() []cel.EnvOption {
 					decls.NewMapType(decls.String, decls.Dyn),
 				),
 			),
+			decls.NewFunction("basic_authentication",
+				decls.NewInstanceOverload(
+					"map_basic_authentication_string_string",
+					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn), decls.String, decls.String},
+					decls.NewMapType(decls.String, decls.Dyn),
+				),
+			),
 			decls.NewFunction("do_request",
 				decls.NewInstanceOverload(
 					"map_do_request",
@@ -444,6 +486,12 @@ func (l httpLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "request_string_string_string",
 				Function: newRequestBody,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "map_basic_authentication_string_string",
+				Function: l.basicAuthentication,
 			},
 		),
 		cel.Functions(
@@ -741,6 +789,49 @@ func respToMap(resp *http.Response) (map[string]interface{}, error) {
 		rm["Request"] = req
 	}
 	return rm, nil
+}
+
+func (l httpLib) basicAuthentication(args ...ref.Val) ref.Val {
+	if len(args) != 3 {
+		return types.NewErr("no such overload for request")
+	}
+	request, ok := args[0].(traits.Mapper)
+	if !ok {
+		return types.ValOrErr(request, "no such overload for do_request")
+	}
+	username, ok := args[1].(types.String)
+	if !ok {
+		return types.ValOrErr(username, "no such overload for request")
+	}
+	password, ok := args[2].(types.String)
+	if !ok {
+		return types.ValOrErr(password, "no such overload for request")
+	}
+	reqm, err := request.ConvertToNative(reflectMapStringAnyType)
+	if err != nil {
+		return types.NewErr("%s", err)
+	}
+
+	// Rather than round-tripping though an http.Request, just
+	// add the Authorization header into the map directly.
+	// This reduces work required in the general case, and greatly
+	// simplifies the case where a body has already been added
+	// to the request.
+	req := reqm.(map[string]interface{})
+	var header http.Header
+	switch h := req["Header"].(type) {
+	case nil:
+		header = make(http.Header)
+		req["Header"] = header
+	case map[string][]string:
+		header = h
+	case http.Header:
+		header = h
+	default:
+		return types.NewErr("invalid type in header field: %T", h)
+	}
+	header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	return types.DefaultTypeAdapter.NativeToValue(req)
 }
 
 func (l httpLib) doRequest(arg ref.Val) ref.Val {
