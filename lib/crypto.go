@@ -37,104 +37,98 @@ import (
 // Crypto returns a cel.EnvOption to configure extended functions for
 // cryptographic hash functions and encoding.
 //
-// Base64
+// # Base64
 //
 // Returns a string of the base64 encoding of a string or bytes:
 //
-//     base64(<bytes>) -> <string>
-//     base64(<string>) -> <string>
-//     <bytes>.base64() -> <string>
-//     <string>.base64() -> <string>
+//	base64(<bytes>) -> <string>
+//	base64(<string>) -> <string>
+//	<bytes>.base64() -> <string>
+//	<string>.base64() -> <string>
 //
 // Examples:
 //
-//     "hello world".base64()  // return "aGVsbG8gd29ybGQ="
+//	"hello world".base64()  // return "aGVsbG8gd29ybGQ="
 //
-//
-// Base64 Raw
+// # Base64 Raw
 //
 // Returns a string of the raw unpadded base64 encoding of a string or bytes:
 //
-//     base64_raw(<bytes>) -> <string>
-//     base64_raw(<string>) -> <string>
-//     <bytes>.base64_raw() -> <string>
-//     <string>.base64_raw() -> <string>
+//	base64_raw(<bytes>) -> <string>
+//	base64_raw(<string>) -> <string>
+//	<bytes>.base64_raw() -> <string>
+//	<string>.base64_raw() -> <string>
 //
 // Examples:
 //
-//     "hello world".base64_raw()  // return "aGVsbG8gd29ybGQ"
+//	"hello world".base64_raw()  // return "aGVsbG8gd29ybGQ"
 //
-//
-// Hex
+// # Hex
 //
 // Returns a string of the hexadecimal representation of a string or bytes:
 //
-//     hex(<bytes>) -> <string>
-//     hex(<string>) -> <string>
-//     <bytes>.hex() -> <string>
-//     <string>.hex() -> <string>
+//	hex(<bytes>) -> <string>
+//	hex(<string>) -> <string>
+//	<bytes>.hex() -> <string>
+//	<string>.hex() -> <string>
 //
 // Examples:
 //
-//     "hello world".hex()  // return "68656c6c6f20776f726c64"
+//	"hello world".hex()  // return "68656c6c6f20776f726c64"
 //
-//
-// SHA-1
+// # SHA-1
 //
 // Returns a bytes of the sha-1 hash of a string or bytes:
 //
-//     sha1(<bytes>) -> <bytes>
-//     sha1(<string>) -> <bytes>
-//     <bytes>.sha1() -> <bytes>
-//     <string>.sha1() -> <bytes>
+//	sha1(<bytes>) -> <bytes>
+//	sha1(<string>) -> <bytes>
+//	<bytes>.sha1() -> <bytes>
+//	<string>.sha1() -> <bytes>
 //
 // Examples:
 //
-//     "hello world".sha1()       // return "Kq5sNclPz7QV2+lfQIuc6R7oRu0="
-//     "hello world".sha1().hex() // return "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"
+//	"hello world".sha1()       // return "Kq5sNclPz7QV2+lfQIuc6R7oRu0="
+//	"hello world".sha1().hex() // return "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"
 //
-//
-// SHA-256
+// # SHA-256
 //
 // Returns a bytes of the sha-256 cryptographic hash of a string or bytes:
 //
-//     sha256(<bytes>) -> <bytes>
-//     sha256(<string>) -> <bytes>
-//     <bytes>.sha256() -> <bytes>
-//     <string>.sha256() -> <bytes>
+//	sha256(<bytes>) -> <bytes>
+//	sha256(<string>) -> <bytes>
+//	<bytes>.sha256() -> <bytes>
+//	<string>.sha256() -> <bytes>
 //
 // Examples:
 //
-//     "hello world".sha1()        // return "uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek="
-//     "hello world".sha1().hex()  // return "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+//	"hello world".sha1()        // return "uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek="
+//	"hello world".sha1().hex()  // return "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
 //
-//
-// HMAC
+// # HMAC
 //
 // Returns a bytes of the HMAC keyed MAC of a string or bytes using either
 // the sha-1 or sha-256 hash function depending on the the second parameter:
 //
-//     hmac(<bytes>, <string>, <bytes>) -> <bytes>
-//     hmac(<string>, <string>, <bytes>) -> <bytes>
-//     <bytes>.hmac(<string>, <bytes>) -> <bytes>
-//     <string>.hmac(<string>, <bytes>) -> <bytes>
+//	hmac(<bytes>, <string>, <bytes>) -> <bytes>
+//	hmac(<string>, <string>, <bytes>) -> <bytes>
+//	<bytes>.hmac(<string>, <bytes>) -> <bytes>
+//	<string>.hmac(<string>, <bytes>) -> <bytes>
 //
 // Examples:
 //
-//     "hello world".hmac("sha256", b"key")        // return "C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E="
-//     "hello world".hmac("sha256", b"key").hex()  // return "0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1"
+//	"hello world".hmac("sha256", b"key")        // return "C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E="
+//	"hello world".hmac("sha256", b"key").hex()  // return "0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1"
 //
-// UUID
+// # UUID
 //
 // Returns a string of a random (Version 4) UUID based on the the Go crypto/rand
 // source:
 //
-//     uuid() -> <string>
+//	uuid() -> <string>
 //
 // Examples:
 //
-//     uuid()  // return "582fc58b-f983-4c35-abb1-65c507c1dc0c"
-//
+//	uuid()  // return "582fc58b-f983-4c35-abb1-65c507c1dc0c"
 func Crypto() cel.EnvOption {
 	return cel.Lib(cryptoLib{})
 }

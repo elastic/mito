@@ -40,22 +40,20 @@ import (
 // func(io.Reader) (io.Reader, error) or func(io.Reader) ref.Val. If the
 // transform is func([]byte) it is expected to mutate the bytes in place.
 //
-// MIME
+// # MIME
 //
 // mime returns <dyn> interpreted through the registered MIME type:
 //
-//     <bytes>.mime(<string>) -> <dyn>
+//	<bytes>.mime(<string>) -> <dyn>
 //
 // Examples:
 //
-//     string(b"hello world!".mime("text/rot13"))  // return "uryyb jbeyq!"
-//     string(b"hello world!".mime("text/upper"))  // return "HELLO WORLD!"
-//     string(b"\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xcaH\xcd\xc9\xc9W(\xcf/\xcaIQ\x04\x04\x00\x00\xff\xffm´\x03\f\x00\x00\x00"
-//         .mime("application/gzip"))  // return "hello world!"
-//
+//	string(b"hello world!".mime("text/rot13"))  // return "uryyb jbeyq!"
+//	string(b"hello world!".mime("text/upper"))  // return "HELLO WORLD!"
+//	string(b"\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xcaH\xcd\xc9\xc9W(\xcf/\xcaIQ\x04\x04\x00\x00\xff\xffm´\x03\f\x00\x00\x00"
+//	    .mime("application/gzip"))  // return "hello world!"
 //
 // See also File and NDJSON.
-//
 func MIME(mimetypes map[string]interface{}) cel.EnvOption {
 	return cel.Lib(mimeLib{transforms: mimetypes})
 }
@@ -148,30 +146,29 @@ func (t transformReader) Read(p []byte) (int, error) {
 // io.Reader holding text/csv data. It should be handed to the File or MIME
 // lib with
 //
-//  File(map[string]interface{}{
-//  	"text/csv; header=present": lib.CSVHeader,
-//  })
+//	File(map[string]interface{}{
+//		"text/csv; header=present": lib.CSVHeader,
+//	})
 //
 // or
 //
-//  MIME(map[string]interface{}{
-//  	"text/csv; header=present": lib.CSVHeader,
-//  })
+//	MIME(map[string]interface{}{
+//		"text/csv; header=present": lib.CSVHeader,
+//	})
 //
 // It will then be able to be used in a file or mime call.
 //
 // Example:
 //
-//     Given a file hello.csv:
-//        "first","second","third"
-//        1,2,3
+//	Given a file hello.csv:
+//	   "first","second","third"
+//	   1,2,3
 //
-//     file('hello.csv', 'text/csv; header=present')
+//	file('hello.csv', 'text/csv; header=present')
 //
-//     will return:
+//	will return:
 //
-//     [{"first": "1", "second": "2", "third": "3"}]
-//
+//	[{"first": "1", "second": "2", "third": "3"}]
 func CSVHeader(r io.Reader) ref.Val {
 	var vals []map[string]string
 	cr := csv.NewReader(r)
@@ -201,30 +198,29 @@ func CSVHeader(r io.Reader) ref.Val {
 // io.Reader holding text/csv data. It should be handed to the File or MIME
 // lib with
 //
-//  File(map[string]interface{}{
-//  	"text/csv; header=absent": lib.CSVNoHeader,
-//  })
+//	File(map[string]interface{}{
+//		"text/csv; header=absent": lib.CSVNoHeader,
+//	})
 //
 // or
 //
-//  MIME(map[string]interface{}{
-//  	"text/csv; header=absent": lib.CSVNoHeader,
-//  })
+//	MIME(map[string]interface{}{
+//		"text/csv; header=absent": lib.CSVNoHeader,
+//	})
 //
 // It will then be able to be used in a file or mime call.
 //
 // Example:
 //
-//     Given a file hello.csv:
-//        "first","second","third"
-//        1,2,3
+//	Given a file hello.csv:
+//	   "first","second","third"
+//	   1,2,3
 //
-//     file('hello.csv', 'text/csv; header=absent')
+//	file('hello.csv', 'text/csv; header=absent')
 //
-//     will return:
+//	will return:
 //
-//     [["first", "second", "third"], ["1", "2", "3"]]
-//
+//	[["first", "second", "third"], ["1", "2", "3"]]
 func CSVNoHeader(r io.Reader) ref.Val {
 	vals, err := csv.NewReader(r).ReadAll()
 	if err != nil {
@@ -237,63 +233,62 @@ func CSVNoHeader(r io.Reader) ref.Val {
 // io.Reader holding ND-JSON data. It should be handed to the File or MIME
 // lib with
 //
-//  File(map[string]interface{}{
-//  	"application/x-ndjson": lib.NDJSON,
-//  })
+//	File(map[string]interface{}{
+//		"application/x-ndjson": lib.NDJSON,
+//	})
 //
 // or
 //
-//  MIME(map[string]interface{}{
-//  	"application/x-ndjson": lib.NDJSON,
-//  })
+//	MIME(map[string]interface{}{
+//		"application/x-ndjson": lib.NDJSON,
+//	})
 //
 // It will then be able to be used in a file or mime call.
 //
 // Example:
 //
-//     Given a file hello.ndjson:
-//        {"message":"hello"}
-//        {"message":"world"}
+//	Given a file hello.ndjson:
+//	   {"message":"hello"}
+//	   {"message":"world"}
 //
-//     file('hello.ndjson', 'application/x-ndjson')
+//	file('hello.ndjson', 'application/x-ndjson')
 //
-//     will return:
+//	will return:
 //
-//     [
-//         {
-//             "message": "hello"
-//         },
-//         {
-//             "message": "world"
-//         }
-//     ]
+//	[
+//	    {
+//	        "message": "hello"
+//	    },
+//	    {
+//	        "message": "world"
+//	    }
+//	]
 //
 // Messages in the ND-JSON stream that are invalid will be added to the list
 // as CEL errors and will need to be processed using the try function.
 //
 // Example:
 //
-//     Given a file hello.ndjson:
-//        {"message":"hello"}
-//        {"message":"oops"
-//        {"message":"world"}
+//	Given a file hello.ndjson:
+//	   {"message":"hello"}
+//	   {"message":"oops"
+//	   {"message":"world"}
 //
-//     file('hello.ndjson', 'application/x-ndjson').map(e, try(e, "error.message"))
+//	file('hello.ndjson', 'application/x-ndjson').map(e, try(e, "error.message"))
 //
-//     will return:
+//	will return:
 //
-//     [
-//         {
-//             "message": "hello"
-//         },
-//         {
-//             "error.message": "unexpected end of JSON input: {\"message\":\"oops\""
-//         },
-//         {
-//             "message": "world"
-//         }
-//     ]
-//
+//	[
+//	    {
+//	        "message": "hello"
+//	    },
+//	    {
+//	        "error.message": "unexpected end of JSON input: {\"message\":\"oops\""
+//	    },
+//	    {
+//	        "message": "world"
+//	    }
+//	]
 func NDJSON(r io.Reader) ref.Val {
 	// This is not real ndjson since it doesn't have the
 	// stupid requirement for newline line termination.
@@ -321,15 +316,15 @@ func NDJSON(r io.Reader) ref.Val {
 // Zip provides a file transform that returns a <map<dyn>> from an io.Reader
 // holding a zip archive data. It should be handed to the File or MIME lib with
 //
-//  File(map[string]interface{}{
-//  	"application/zip": lib.Zip,
-//  })
+//	File(map[string]interface{}{
+//		"application/zip": lib.Zip,
+//	})
 //
 // or
 //
-//  MIME(map[string]interface{}{
-//  	"application/zip": lib.Zip,
-//  })
+//	MIME(map[string]interface{}{
+//		"application/zip": lib.Zip,
+//	})
 //
 // It will then be able to be used in a file or mime call.
 //
@@ -337,37 +332,37 @@ func NDJSON(r io.Reader) ref.Val {
 //
 // Example:
 //
-//     file('hello.zip', 'application/zip')
+//	file('hello.zip', 'application/zip')
 //
-//     might return:
+//	might return:
 //
-//     {
-//         "Comment": "hello zip file"
-//         "File": [
-//             {
-//                 "CRC32": 0,
-//                 "Comment": "",
-//                 "Data": "",
-//                 "Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
-//                 "IsDir": true,
-//                 "Modified": "2022-04-14T21:09:46+09:30",
-//                 "Name": "subdir/",
-//                 "NonUTF8": false,
-//                 "Size": 0
-//             },
-//             {
-//                 "CRC32": 30912436,
-//                 "Comment": "",
-//                 "Data": "aGVsbG8gd29ybGQhCg==",
-//                 "Extra": "VVQFAAP0B1hidXgLAAEE6AMAAAToAwAA",
-//                 "IsDir": false,
-//                 "Modified": "2022-04-14T21:09:32+09:30",
-//                 "Name": "subdir/a.txt",
-//                 "NonUTF8": false,
-//                 "Size": 13
-//             }
-//         ]
-//     }
+//	{
+//	    "Comment": "hello zip file"
+//	    "File": [
+//	        {
+//	            "CRC32": 0,
+//	            "Comment": "",
+//	            "Data": "",
+//	            "Extra": "VVQFAAMCCFhidXgLAAEE6AMAAAToAwAA",
+//	            "IsDir": true,
+//	            "Modified": "2022-04-14T21:09:46+09:30",
+//	            "Name": "subdir/",
+//	            "NonUTF8": false,
+//	            "Size": 0
+//	        },
+//	        {
+//	            "CRC32": 30912436,
+//	            "Comment": "",
+//	            "Data": "aGVsbG8gd29ybGQhCg==",
+//	            "Extra": "VVQFAAP0B1hidXgLAAEE6AMAAAToAwAA",
+//	            "IsDir": false,
+//	            "Modified": "2022-04-14T21:09:32+09:30",
+//	            "Name": "subdir/a.txt",
+//	            "NonUTF8": false,
+//	            "Size": 13
+//	        }
+//	    ]
+//	}
 //
 // Note that the entire contents of the zip file is expanded into memory.
 func Zip(r io.Reader) ref.Val {

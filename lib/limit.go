@@ -49,13 +49,13 @@ import (
 // exists it should be a string with an error message indicating the result can
 // not be used.
 //
-// Rate Limit
+// # Rate Limit
 //
 // rate_limit returns <map<string,dyn>> interpreted through the registered rate
 // limit policy or with a generalised policy constructor:
 //
-//     rate_limit(<map<string,dyn>>, <string>, <duration>) -> <map<string,dyn>>
-//     rate_limit(<map<string,dyn>>, <string>, <bool>, <bool>, <duration>, <int>) -> <map<string,dyn>>
+//	rate_limit(<map<string,dyn>>, <string>, <duration>) -> <map<string,dyn>>
+//	rate_limit(<map<string,dyn>>, <string>, <bool>, <bool>, <duration>, <int>) -> <map<string,dyn>>
 //
 // In the first form the string is the policy name and the duration is the default
 // quota window to use in the absence of window information from headers.
@@ -72,18 +72,17 @@ import (
 //
 // Examples:
 //
-//     rate_limit(h, 'okta', duration('1m'))
-//     rate_limit(h, 'draft', duration('1m'))
+//	rate_limit(h, 'okta', duration('1m'))
+//	rate_limit(h, 'draft', duration('1m'))
 //
-//     // Similar semantics to the okta policy.
-//     rate_limit(h, 'X-Rate-Limit', true, false, duration('1s'), 1)
+//	// Similar semantics to the okta policy.
+//	rate_limit(h, 'X-Rate-Limit', true, false, duration('1s'), 1)
 //
-//     // Similar semantics to the draft policy in the simplest case.
-//     rate_limit(h, 'Rate-Limit', true, true, duration('1s'), 1)
+//	// Similar semantics to the draft policy in the simplest case.
+//	rate_limit(h, 'Rate-Limit', true, true, duration('1s'), 1)
 //
-//     // Non-canonical keys.
-//     rate_limit(h, 'X-RateLimit', false, false, duration('1s'), 1)
-//
+//	// Non-canonical keys.
+//	rate_limit(h, 'X-RateLimit', false, false, duration('1s'), 1)
 func Limit(policy map[string]LimitPolicy) cel.EnvOption {
 	return cel.Lib(limitLib{policies: policy})
 }
@@ -190,26 +189,26 @@ func mapStrings(val ref.Val) (map[string][]string, error) {
 // OktaRateLimit implements the Okta rate limit policy translation.
 // It should be handed to the Limit lib with
 //
-//  Limit(map[string]lib.LimitPolicy{
-//  	"okta": lib.OktaRateLimit,
-//  })
+//	Limit(map[string]lib.LimitPolicy{
+//		"okta": lib.OktaRateLimit,
+//	})
 //
 // It will then be able to be used in a limit call with the window duration
 // given by the Okta documentation.
 //
 // Example:
 //
-//     rate_limit(h, 'okta', duration('1m'))
+//	rate_limit(h, 'okta', duration('1m'))
 //
-//     might return:
+//	might return:
 //
-//     {
-//         "burst": 1,
-//         "headers": "X-Rate-Limit-Limit=\"600\" X-Rate-Limit-Remaining=\"598\" X-Rate-Limit-Reset=\"1650094960\"",
-//         "next": 10,
-//         "rate": 0.9975873271836141,
-//         "reset": "2022-04-16T07:48:40Z"
-//     },
+//	{
+//	    "burst": 1,
+//	    "headers": "X-Rate-Limit-Limit=\"600\" X-Rate-Limit-Remaining=\"598\" X-Rate-Limit-Reset=\"1650094960\"",
+//	    "next": 10,
+//	    "rate": 0.9975873271836141,
+//	    "reset": "2022-04-16T07:48:40Z"
+//	},
 //
 // See https://developer.okta.com/docs/reference/rl-best-practices/
 func OktaRateLimit(h http.Header, window time.Duration) map[string]interface{} {
@@ -261,36 +260,36 @@ func OktaRateLimit(h http.Header, window time.Duration) map[string]interface{} {
 // DraftRateLimit implements the draft rate limit policy translation.
 // It should be handed to the Limit lib with
 //
-//  Limit(map[string]lib.LimitPolicy{
-//  	"draft": lib.DraftRateLimit,
-//  })
+//	Limit(map[string]lib.LimitPolicy{
+//		"draft": lib.DraftRateLimit,
+//	})
 //
 // It will then be able to be used in a limit call where the duration is
 // the default quota window.
 //
 // Example:
 //
-//     rate_limit(h, 'draft', duration('60s'))
+//	rate_limit(h, 'draft', duration('60s'))
 //
-//     might return something like:
+//	might return something like:
 //
-//     {
-//         "burst": 1,
-//         "headers": "Rate-Limit-Limit=\"5000\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"Sat, 16 Apr 2022 07:48:40 GMT\"",
-//         "next": 83.33333333333333,
-//         "rate": 0.16689431007474315,
-//         "reset": "2022-04-16T07:48:40Z"
-//     }
+//	{
+//	    "burst": 1,
+//	    "headers": "Rate-Limit-Limit=\"5000\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"Sat, 16 Apr 2022 07:48:40 GMT\"",
+//	    "next": 83.33333333333333,
+//	    "rate": 0.16689431007474315,
+//	    "reset": "2022-04-16T07:48:40Z"
+//	}
 //
-//     or
+//	or
 //
-//     {
-//         "burst": 1000,
-//         "headers": "Rate-Limit-Limit=\"12, 12;window=1; burst=1000;policy=\\\"leaky bucket\\\"\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"Sat, 16 Apr 2022 07:48:40 GMT\"",
-//         "next": 12,
-//         "rate": 100,
-//         "reset": "2022-04-16T07:48:40Z"
-//     }
+//	{
+//	    "burst": 1000,
+//	    "headers": "Rate-Limit-Limit=\"12, 12;window=1; burst=1000;policy=\\\"leaky bucket\\\"\" Rate-Limit-Remaining=\"100\" Rate-Limit-Reset=\"Sat, 16 Apr 2022 07:48:40 GMT\"",
+//	    "next": 12,
+//	    "rate": 100,
+//	    "reset": "2022-04-16T07:48:40Z"
+//	}
 //
 // See https://datatracker.ietf.org/doc/html/draft-polli-ratelimit-headers-00
 func DraftRateLimit(h http.Header, window time.Duration) map[string]interface{} {

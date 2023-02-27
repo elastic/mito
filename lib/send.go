@@ -33,30 +33,27 @@ import (
 // received from by a goroutine running in the host program. Send to calls
 // will allow error values to be passed as arguments in the <dyn> position.
 //
-// Send ref.Val To
+// # Send ref.Val To
 //
 // Sends a value as a ref.Val to the named channel and returns the value:
 //
-//     <dyn>.send_to(<string>) -> <dyn>
-//     send_to(<dyn>, <string>) -> <dyn>
+//	<dyn>.send_to(<string>) -> <dyn>
+//	send_to(<dyn>, <string>) -> <dyn>
 //
-//
-// Send To
+// # Send To
 //
 // Sends a value to the named channel and returns the value:
 //
-//     <dyn>.send_to(<string>) -> <dyn>
-//     send_to(<dyn>, <string>) -> <dyn>
+//	<dyn>.send_to(<string>) -> <dyn>
+//	send_to(<dyn>, <string>) -> <dyn>
 //
-//
-// Close
+// # Close
 //
 // Closes the named channel and returns true. It will cause an error if the
 // same name is closed more than once in an expression. The dyn received is
 // ignored.
 //
-//     <dyn>.close(<string>) -> <bool>
-//
+//	<dyn>.close(<string>) -> <bool>
 func Send(ch map[string]chan interface{}) cel.EnvOption {
 	return cel.Lib(sendLib(ch))
 }

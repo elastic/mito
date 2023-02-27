@@ -31,34 +31,32 @@ import (
 // Try returns a cel.EnvOption to configure extended functions for allowing
 // errors to be weakened to strings or objects.
 //
-// Try
+// # Try
 //
 // try returns either passes a value through unaltered if it is valid and
 // not an error, or it returns a string or object describing the error:
 //
-//     try(<error>) -> <map<string,sting>>
-//     try(<dyn>) -> <dyn>
-//     try(<error>, <string>) -> <map<string,sting>>
-//     try(<dyn>, <string>) -> <dyn>
+//	try(<error>) -> <map<string,sting>>
+//	try(<dyn>) -> <dyn>
+//	try(<error>, <string>) -> <map<string,sting>>
+//	try(<dyn>, <string>) -> <dyn>
 //
 // Examples:
 //
-//     try(0/1)            // return 0
-//     try(0/0)            // return "division by zero"
-//     try(0/0, "error")   // return {"error": "division by zero"}
+//	try(0/1)            // return 0
+//	try(0/0)            // return "division by zero"
+//	try(0/0, "error")   // return {"error": "division by zero"}
 //
-//
-// Is Error
+// # Is Error
 //
 // is_error returns a bool indicating whether the argument is an error:
 //
-//     is_error(<dyn>) -> <bool>
+//	is_error(<dyn>) -> <bool>
 //
 // Examples:
 //
-//     is_error(0/1)            // return false
-//     is_error(0/0)            // return true
-//
+//	is_error(0/1)            // return false
+//	is_error(0/0)            // return true
 func Try() cel.EnvOption {
 	return cel.Lib(tryLib{})
 }

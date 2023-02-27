@@ -50,244 +50,232 @@ import (
 // is needed for these constructed requests, the basic_authentication method
 // can be used to add the necessary header.
 //
-// HEAD
+// # HEAD
 //
 // head performs a HEAD method request and returns the result:
 //
-//     head(<string>) -> <map<string,dyn>>
+//	head(<string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     head('http://www.example.com/')  // returns {"Body": "", "Close": false,
+//	head('http://www.example.com/')  // returns {"Body": "", "Close": false,
 //
-//
-// GET
+// # GET
 //
 // get performs a GET method request and returns the result:
 //
-//     get(<string>) -> <map<string,dyn>>
+//	get(<string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     get('http://www.example.com/')  // returns {"Body": "PCFkb2N0e...
+//	get('http://www.example.com/')  // returns {"Body": "PCFkb2N0e...
 //
-//
-// GET Request
+// # GET Request
 //
 // get_request returns a GET method request:
 //
-//     get_request(<string>) -> <map<string,dyn>>
+//	get_request(<string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     get_request('http://www.example.com/')
+//	get_request('http://www.example.com/')
 //
-//     will return:
+//	will return:
 //
-//     {
-//         "Close": false,
-//         "ContentLength": 0,
-//         "Header": {},
-//         "Host": "www.example.com",
-//         "Method": "GET",
-//         "Proto": "HTTP/1.1",
-//         "ProtoMajor": 1,
-//         "ProtoMinor": 1,
-//         "URL": "http://www.example.com/"
-//     }
+//	{
+//	    "Close": false,
+//	    "ContentLength": 0,
+//	    "Header": {},
+//	    "Host": "www.example.com",
+//	    "Method": "GET",
+//	    "Proto": "HTTP/1.1",
+//	    "ProtoMajor": 1,
+//	    "ProtoMinor": 1,
+//	    "URL": "http://www.example.com/"
+//	}
 //
-//
-// POST
+// # POST
 //
 // post performs a POST method request and returns the result:
 //
-//     post(<string>, <string>, <bytes>) -> <map<string,dyn>>
-//     post(<string>, <string>, <string>) -> <map<string,dyn>>
+//	post(<string>, <string>, <bytes>) -> <map<string,dyn>>
+//	post(<string>, <string>, <string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     post("http://www.example.com/", "text/plain", "test")  // returns {"Body": "PCFkb2N0e...
+//	post("http://www.example.com/", "text/plain", "test")  // returns {"Body": "PCFkb2N0e...
 //
-//
-// POST Request
+// # POST Request
 //
 // post_request returns a POST method request:
 //
-//     post_request(<string>, <string>, <bytes>) -> <map<string,dyn>>
-//     post_request(<string>, <string>, <string>) -> <map<string,dyn>>
+//	post_request(<string>, <string>, <bytes>) -> <map<string,dyn>>
+//	post_request(<string>, <string>, <string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     post_request("http://www.example.com/", "text/plain", "test")
+//	post_request("http://www.example.com/", "text/plain", "test")
 //
-//     will return:
+//	will return:
 //
-//     {
-//         "Body": "test",
-//         "Close": false,
-//         "ContentLength": 4,
-//         "Header": {
-//             "Content-Type": [
-//                 "text/plain"
-//             ]
-//         },
-//         "Host": "www.example.com",
-//         "Method": "POST",
-//         "Proto": "HTTP/1.1",
-//         "ProtoMajor": 1,
-//         "ProtoMinor": 1,
-//         "URL": "http://www.example.com/"
-//     }
+//	{
+//	    "Body": "test",
+//	    "Close": false,
+//	    "ContentLength": 4,
+//	    "Header": {
+//	        "Content-Type": [
+//	            "text/plain"
+//	        ]
+//	    },
+//	    "Host": "www.example.com",
+//	    "Method": "POST",
+//	    "Proto": "HTTP/1.1",
+//	    "ProtoMajor": 1,
+//	    "ProtoMinor": 1,
+//	    "URL": "http://www.example.com/"
+//	}
 //
-//
-// Request
+// # Request
 //
 // request returns a user-defined method request:
 //
-//     request(<string>, <string>, <string>, <bytes>) -> <map<string,dyn>>
-//     request(<string>, <string>, <string>, <string>) -> <map<string,dyn>>
+//	request(<string>, <string>, <string>, <bytes>) -> <map<string,dyn>>
+//	request(<string>, <string>, <string>, <string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     request("GET", "http://www.example.com/").with({"Header":{
-//         "Authorization": ["Basic "+string(base64("username:password"))],
-//     }})
+//	request("GET", "http://www.example.com/").with({"Header":{
+//	    "Authorization": ["Basic "+string(base64("username:password"))],
+//	}})
 //
-//     will return:
+//	will return:
 //
-//     {
-//         "Close": false,
-//         "ContentLength": 0,
-//         "Header": {
-//             "Authorization": [
-//                 "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
-//             ]
-//         },
-//         "Host": "www.example.com",
-//         "Method": "GET",
-//         "Proto": "HTTP/1.1",
-//         "ProtoMajor": 1,
-//         "ProtoMinor": 1,
-//         "URL": "http://www.example.com/"
-//     }
+//	{
+//	    "Close": false,
+//	    "ContentLength": 0,
+//	    "Header": {
+//	        "Authorization": [
+//	            "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+//	        ]
+//	    },
+//	    "Host": "www.example.com",
+//	    "Method": "GET",
+//	    "Proto": "HTTP/1.1",
+//	    "ProtoMajor": 1,
+//	    "ProtoMinor": 1,
+//	    "URL": "http://www.example.com/"
+//	}
 //
-//
-// Basic Authentication
+// # Basic Authentication
 //
 // basic_authentication adds a Basic Authentication Authorization header to a request,
 // returning the modified request.
 //
-//     <map<string,dyn>>.basic_authentication(<string>, <string>) -> <map<string,dyn>>
+//	<map<string,dyn>>.basic_authentication(<string>, <string>) -> <map<string,dyn>>
 //
 // Example:
 //
-//     request("GET", "http://www.example.com/").basic_authentication("username", "password")
+//	request("GET", "http://www.example.com/").basic_authentication("username", "password")
 //
-//     will return:
+//	will return:
 //
-//     {
-//         "Close": false,
-//         "ContentLength": 0,
-//         "Header": {
-//             "Authorization": [
-//                 "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
-//             ]
-//         },
-//         "Host": "www.example.com",
-//         "Method": "GET",
-//         "Proto": "HTTP/1.1",
-//         "ProtoMajor": 1,
-//         "ProtoMinor": 1,
-//         "URL": "http://www.example.com/"
-//     }
+//	{
+//	    "Close": false,
+//	    "ContentLength": 0,
+//	    "Header": {
+//	        "Authorization": [
+//	            "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+//	        ]
+//	    },
+//	    "Host": "www.example.com",
+//	    "Method": "GET",
+//	    "Proto": "HTTP/1.1",
+//	    "ProtoMajor": 1,
+//	    "ProtoMinor": 1,
+//	    "URL": "http://www.example.com/"
+//	}
 //
-//
-// Do Request
+// # Do Request
 //
 // do_request executes an HTTP request:
 //
-//     <map<string,dyn>>.do_request() -> <map<string,dyn>>
+//	<map<string,dyn>>.do_request() -> <map<string,dyn>>
 //
 // Example:
 //
-//     get_request("http://www.example.com/").do_request()  // returns {"Body": "PCFkb2N0e...
+//	get_request("http://www.example.com/").do_request()  // returns {"Body": "PCFkb2N0e...
 //
-//
-// Parse URL
+// # Parse URL
 //
 // parse_url returns a map holding the details of the parsed URL corresponding
 // to the Go url.URL struct:
 //
-//     <string>.parse_url() -> <map<string,dyn>>
+//	<string>.parse_url() -> <map<string,dyn>>
 //
 // Example:
 //
-//     "https://pkg.go.dev/net/url#URL".parse_url()
+//	"https://pkg.go.dev/net/url#URL".parse_url()
 //
-//     will return:
+//	will return:
 //
-//     {
-//         "ForceQuery": false,
-//         "Fragment": "URL",
-//         "Host": "pkg.go.dev",
-//         "Opaque": "",
-//         "Path": "/net/url",
-//         "RawFragment": "",
-//         "RawPath": "",
-//         "RawQuery": "",
-//         "Scheme": "https",
-//         "User": null
-//     }
+//	{
+//	    "ForceQuery": false,
+//	    "Fragment": "URL",
+//	    "Host": "pkg.go.dev",
+//	    "Opaque": "",
+//	    "Path": "/net/url",
+//	    "RawFragment": "",
+//	    "RawPath": "",
+//	    "RawQuery": "",
+//	    "Scheme": "https",
+//	    "User": null
+//	}
 //
-//
-// Format URL
+// # Format URL
 //
 // format_url returns string corresponding to the URL map that is the receiver:
 //
-//     <map<string,dyn>>.format_url() -> <string>
+//	<map<string,dyn>>.format_url() -> <string>
 //
 // Example:
 //
-//     "https://pkg.go.dev/net/url#URL".parse_url().with_replace({"Host": "godoc.org"}).format_url()
+//	"https://pkg.go.dev/net/url#URL".parse_url().with_replace({"Host": "godoc.org"}).format_url()
 //
-//     will return:
+//	will return:
 //
-//     "https://godoc.org/net/url#URL"
+//	"https://godoc.org/net/url#URL"
 //
-//
-// Parse Query
+// # Parse Query
 //
 // parse_query returns a map holding the details of the parsed query corresponding
 // to the Go url.Values map:
 //
-//     <string>.parse_query() -> <map<string,<list<string>>>
+//	<string>.parse_query() -> <map<string,<list<string>>>
 //
 // Example:
 //
-//     "page=1&line=25".parse_url()
+//	"page=1&line=25".parse_url()
 //
-//     will return:
+//	will return:
 //
-//     {
-//         "line": ["25"],
-//         "page": ["1"]
-//     }
+//	{
+//	    "line": ["25"],
+//	    "page": ["1"]
+//	}
 //
-//
-// Format Query
+// # Format Query
 //
 // format_query returns string corresponding to the query map that is the receiver:
 //
-//     <map<string,<list<string>>>.format_query() -> <string>
+//	<map<string,<list<string>>>.format_query() -> <string>
 //
 // Example:
 //
-//     "page=1&line=25".parse_query().with_replace({"page":[string(2)]}).format_query()
+//	"page=1&line=25".parse_query().with_replace({"page":[string(2)]}).format_query()
 //
-//     will return:
+//	will return:
 //
-//     line=25&page=2"
-//
+//	line=25&page=2"
 func HTTP(client *http.Client, limit *rate.Limiter, auth *BasicAuth) cel.EnvOption {
 	return HTTPWithContext(context.Background(), client, limit, auth)
 }

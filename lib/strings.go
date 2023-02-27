@@ -38,36 +38,36 @@ import (
 // Relevant documentation for the methods can obtained from the Go standard library. In all
 // cases the first parameter in the Go function corresponds to the CEL method receiver.
 //
-// String Methods
+// # String Methods
 //
-// - compare: strings.Compare(a, b string) int
-// - contains_substr: strings.Contains(s, substr string) bool
-// - contained_any: strings.ContainsAny(s, chars string) bool
-// - count: strings.Count(s, substr string) int
-// - equal_fold: strings.EqualFold(s, t string) bool
-// - fields: strings.Fields(s string) []string
-// - has_prefix: strings.HasPrefix(s, prefix string) bool
-// - has_suffix: strings.HasSuffix(s, suffix string) bool
-// - index: strings.Index(s, substr string) int
-// - index_any: strings.IndexAny(s, chars string) int
-// - last_index: strings.LastIndex(s, substr string) int
-// - last_index_any: strings.LastIndexAny(s, chars string) int
-// - repeat: strings.Repeat(s string, count int) string
-// - replace: strings.Replace(s, old, new string, n int) string
-// - replace_all: strings.ReplaceAll(s, old, new string) string
-// - split: strings.Split(s, sep string) []string
-// - split_after: strings.SplitAfter(s, sep string) []string
-// - split_after_n: strings.SplitAfterN(s, sep string, n int) []string
-// - split_n: strings.SplitN(s, sep string, n int) []string
-// - to_lower: strings.ToLower(s string) string
-// - to_title: strings.ToTitle(s string) string
-// - to_upper: strings.ToUpper(s string) string
-// - trim: strings.Trim(s, cutset string) string
-// - trim_left: strings.TrimLeft(s, cutset string) string
-// - trim_prefix: strings.TrimPrefix(s, prefix string) string
-// - trim_right: strings.TrimRight(s, cutset string) string
-// - trim_space: strings.TrimSpace(s string) string
-// - trim_suffix: strings.TrimSuffix(s, suffix string) string
+//   - compare: strings.Compare(a, b string) int
+//   - contains_substr: strings.Contains(s, substr string) bool
+//   - contained_any: strings.ContainsAny(s, chars string) bool
+//   - count: strings.Count(s, substr string) int
+//   - equal_fold: strings.EqualFold(s, t string) bool
+//   - fields: strings.Fields(s string) []string
+//   - has_prefix: strings.HasPrefix(s, prefix string) bool
+//   - has_suffix: strings.HasSuffix(s, suffix string) bool
+//   - index: strings.Index(s, substr string) int
+//   - index_any: strings.IndexAny(s, chars string) int
+//   - last_index: strings.LastIndex(s, substr string) int
+//   - last_index_any: strings.LastIndexAny(s, chars string) int
+//   - repeat: strings.Repeat(s string, count int) string
+//   - replace: strings.Replace(s, old, new string, n int) string
+//   - replace_all: strings.ReplaceAll(s, old, new string) string
+//   - split: strings.Split(s, sep string) []string
+//   - split_after: strings.SplitAfter(s, sep string) []string
+//   - split_after_n: strings.SplitAfterN(s, sep string, n int) []string
+//   - split_n: strings.SplitN(s, sep string, n int) []string
+//   - to_lower: strings.ToLower(s string) string
+//   - to_title: strings.ToTitle(s string) string
+//   - to_upper: strings.ToUpper(s string) string
+//   - trim: strings.Trim(s, cutset string) string
+//   - trim_left: strings.TrimLeft(s, cutset string) string
+//   - trim_prefix: strings.TrimPrefix(s, prefix string) string
+//   - trim_right: strings.TrimRight(s, cutset string) string
+//   - trim_space: strings.TrimSpace(s string) string
+//   - trim_suffix: strings.TrimSuffix(s, suffix string) string
 //
 // In addition to the strings package functions, a sub-string method is provided that allows
 // string slicing at unicode code point boundaries. It differs from Go's string slicing
@@ -75,20 +75,20 @@ import (
 // method will always return a valid UTF-8 string, or an error if the indexes are out of
 // bounds or invalid.
 //
-// - substring: s[start:end]
+//   - substring: s[start:end]
 //
-// String List Methods
+// # String List Methods
 //
-// - join: strings.Join(elems []string, sep string) string
+//   - join: strings.Join(elems []string, sep string) string
 //
-// Bytes Methods
+// # Bytes Methods
 //
 // The to_valid_utf8 method is equivalent to strings.ToValidUTF8 with the receiver first
 // converted to a Go string. This special case is required as CEL does not permit invalid
 // UTF-8 string conversions.
 //
-// - to_valid_utf8: strings.ToValidUTF8(s, replacement string) string
-// - valid_utf8: utf8.Valid(s []byte) bool
+//   - to_valid_utf8: strings.ToValidUTF8(s, replacement string) string
+//   - valid_utf8: utf8.Valid(s []byte) bool
 func Strings() cel.EnvOption {
 	return cel.Lib(stringLib{})
 }
