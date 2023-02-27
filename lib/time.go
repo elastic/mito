@@ -37,78 +37,74 @@ import (
 //
 // Returns a timestamp for when the call was made:
 //
-//     now() -> <timestamp>
+//	now() -> <timestamp>
 //
 // Examples:
 //
-//     now()  // return "2022-03-30T11:17:57.078390759Z"
+//	now()  // return "2022-03-30T11:17:57.078390759Z"
 //
 // Now (Global Variable)
 //
-//
 // Returns a timestamp for when the expression evaluation started:
 //
-//     now -> <timestamp>
+//	now -> <timestamp>
 //
 // Examples:
 //
-//     now  // return "2022-03-30T11:17:57.078389559Z"
+//	now  // return "2022-03-30T11:17:57.078389559Z"
 //
-//
-// Format
+// # Format
 //
 // Returns a string representation of the timestamp formatted according to
 // the provided layout:
 //
-//     <timestamp>.format(<string>) -> <string>
+//	<timestamp>.format(<string>) -> <string>
 //
 // Examples:
 //
-//     now().format(time_layout.Kitchen)  // return "11:17AM"
+//	now().format(time_layout.Kitchen)  // return "11:17AM"
 //
-//
-// Parse Time
+// # Parse Time
 //
 // Returns a timestamp from a string based on a time layout or list of possible
 // layouts. If a list of formats is provided, the first successful layout is
 // used:
 //
-//     <string>.parse_time(<string>) -> <timestamp>
-//     <string>.parse_time(<list<string>>) -> <timestamp>
+//	<string>.parse_time(<string>) -> <timestamp>
+//	<string>.parse_time(<list<string>>) -> <timestamp>
 //
 // Examples:
 //
-//     "11:17AM".parse_time(time_layout.Kitchen)                       // return <timestamp>
-//     "11:17AM".parse_time([time_layout.RFC3339,time_layout.Kitchen]) // return <timestamp>
-//     "11:17AM".parse_time(time_layout.RFC3339)                       // return error
+//	"11:17AM".parse_time(time_layout.Kitchen)                       // return <timestamp>
+//	"11:17AM".parse_time([time_layout.RFC3339,time_layout.Kitchen]) // return <timestamp>
+//	"11:17AM".parse_time(time_layout.RFC3339)                       // return error
 //
-//
-// Global Variables
+// # Global Variables
 //
 // A collection of global variable are provided to give access to the start
 // time of the evaluation and to the time formatting layouts provided by
 // the Go standard library time package.
 //
-//     "now": <timestamp of evaluation start>,
-//     "time_layout": {
-//         "Layout":      time.Layout,
-//         "ANSIC":       time.ANSIC,
-//         "UnixDate":    time.UnixDate,
-//         "RubyDate":    time.RubyDate,
-//         "RFC822":      time.RFC822,
-//         "RFC822Z":     time.RFC822Z,
-//         "RFC850":      time.RFC850,
-//         "RFC1123":     time.RFC1123,
-//         "RFC1123Z":    time.RFC1123Z,
-//         "RFC3339":     time.RFC3339,
-//         "RFC3339Nano": time.RFC3339Nano,
-//         "Kitchen":     time.Kitchen,
-//         "Stamp":       time.Stamp,
-//         "StampMilli":  time.StampMilli,
-//         "StampMicro":  time.StampMicro,
-//         "StampNano":   time.StampNano,
-//         "HTTP":        http.TimeFormat
-//     }
+//	"now": <timestamp of evaluation start>,
+//	"time_layout": {
+//	    "Layout":      time.Layout,
+//	    "ANSIC":       time.ANSIC,
+//	    "UnixDate":    time.UnixDate,
+//	    "RubyDate":    time.RubyDate,
+//	    "RFC822":      time.RFC822,
+//	    "RFC822Z":     time.RFC822Z,
+//	    "RFC850":      time.RFC850,
+//	    "RFC1123":     time.RFC1123,
+//	    "RFC1123Z":    time.RFC1123Z,
+//	    "RFC3339":     time.RFC3339,
+//	    "RFC3339Nano": time.RFC3339Nano,
+//	    "Kitchen":     time.Kitchen,
+//	    "Stamp":       time.Stamp,
+//	    "StampMilli":  time.StampMilli,
+//	    "StampMicro":  time.StampMicro,
+//	    "StampNano":   time.StampNano,
+//	    "HTTP":        http.TimeFormat
+//	}
 func Time() cel.EnvOption {
 	return cel.Lib(timeLib{})
 }

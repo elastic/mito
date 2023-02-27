@@ -37,73 +37,71 @@ import (
 // func(io.Reader) (io.Reader, error) or func(io.Reader) ref.Val. If the
 // transform is func([]byte) it is expected to mutate the bytes in place.
 //
-// Dir
+// # Dir
 //
 // dir returns either a directory for the provided path:
 //
-//     dir(<string>) -> <list<map<string,dyn>>>
+//	dir(<string>) -> <list<map<string,dyn>>>
 //
 // Examples:
 //
-//     dir('subdir')
+//	dir('subdir')
 //
-//     will return something like:
+//	will return something like:
 //
-//     [
-//         {
-//             "is_dir": true,
-//             "mod_time": "2022-04-05T20:53:11.923840504+09:30",
-//             "name": "subsubdir",
-//             "size": 4096
-//         },
-//         {
-//             "is_dir": false,
-//             "mod_time": "2022-04-05T20:53:11.923840504+09:30",
-//             "name": "a.txt",
-//             "size": 13
-//         },
-//         {
-//             "is_dir": false,
-//             "mod_time": "2022-04-05T20:53:11.923840504+09:30",
-//             "name": "b.txt",
-//             "size": 11
-//         }
-//     ]
+//	[
+//	    {
+//	        "is_dir": true,
+//	        "mod_time": "2022-04-05T20:53:11.923840504+09:30",
+//	        "name": "subsubdir",
+//	        "size": 4096
+//	    },
+//	    {
+//	        "is_dir": false,
+//	        "mod_time": "2022-04-05T20:53:11.923840504+09:30",
+//	        "name": "a.txt",
+//	        "size": 13
+//	    },
+//	    {
+//	        "is_dir": false,
+//	        "mod_time": "2022-04-05T20:53:11.923840504+09:30",
+//	        "name": "b.txt",
+//	        "size": 11
+//	    }
+//	]
 //
-//
-// File
+// # File
 //
 // file returns either a <bytes> or a <dyn> depending on whether it is called
 // with one parameter or two:
 //
-//     file(<string>) -> <bytes>
-//     file(<string>, <string>) -> <dyn>
+//	file(<string>) -> <bytes>
+//	file(<string>, <string>) -> <dyn>
 //
 // The first parameter is a file path and the second is a look-up into the
 // transforms map provided by to the File cel.EnvOption.
 //
 // Examples:
 //
-//     Given a file hello.txt:
-//        world!
+//	Given a file hello.txt:
+//	   world!
 //
-//     And the following transforms map (rot13 is a transforming reader):
+//	And the following transforms map (rot13 is a transforming reader):
 //
-//        map[string]interface{}{
-//            "text/rot13": func(r io.Reader) io.Reader { return rot13{r} },
-//            "text/upper": func(p []byte) {
-//                for i, b := range p {
-//                    if 'a' <= b && b <= 'z' {
-//                        p[i] &^= 'a' - 'A'
-//                    }
-//                }
-//            },
-//        }
+//	   map[string]interface{}{
+//	       "text/rot13": func(r io.Reader) io.Reader { return rot13{r} },
+//	       "text/upper": func(p []byte) {
+//	           for i, b := range p {
+//	               if 'a' <= b && b <= 'z' {
+//	                   p[i] &^= 'a' - 'A'
+//	               }
+//	           }
+//	       },
+//	   }
 //
-//     string(file('hello.txt'))                 // return "world!\n"
-//     string(file('hello.txt', 'text/rot13'))   // return "jbeyq!\n"
-//     string(file('hello.txt', 'text/upper'))   // return "WORLD!\n"
-//
+//	string(file('hello.txt'))                 // return "world!\n"
+//	string(file('hello.txt', 'text/rot13'))   // return "jbeyq!\n"
+//	string(file('hello.txt', 'text/upper'))   // return "WORLD!\n"
 func File(mimetypes map[string]interface{}) cel.EnvOption {
 	return cel.Lib(fileLib{transforms: mimetypes})
 }

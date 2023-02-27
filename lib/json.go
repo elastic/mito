@@ -36,51 +36,48 @@ import (
 // A nil adapter is valid an will give an option using the default type
 // adapter, types.DefaultTypeAdapter.
 //
-// Encode JSON
+// # Encode JSON
 //
 // encode_json returns a string of the JSON encoding of the receiver or
 // parameter:
 //
-//     encode_json(<dyn>) -> <string>
-//     <dyn>.encode_json() -> <string>
+//	encode_json(<dyn>) -> <string>
+//	<dyn>.encode_json() -> <string>
 //
 // Examples:
 //
-//     {"a":1, "b":[1, 2, 3]}.encode_json()  // return "{\"a\":1,\"b\":[1,2,3]}"
-//     encode_json({"a":1, "b":[1, 2, 3]})   // return "{\"a\":1,\"b\":[1,2,3]}"
+//	{"a":1, "b":[1, 2, 3]}.encode_json()  // return "{\"a\":1,\"b\":[1,2,3]}"
+//	encode_json({"a":1, "b":[1, 2, 3]})   // return "{\"a\":1,\"b\":[1,2,3]}"
 //
-//
-// Decode JSON
+// # Decode JSON
 //
 // decode_json returns the object described by the JSON encoding of the receiver
 // or parameter:
 //
-//     <bytes>.decode_json() -> <dyn>
-//     <string>.decode_json() -> <dyn>
-//     decode_json(<bytes>) -> <dyn>
-//     decode_json(<string>) -> <dyn>
+//	<bytes>.decode_json() -> <dyn>
+//	<string>.decode_json() -> <dyn>
+//	decode_json(<bytes>) -> <dyn>
+//	decode_json(<string>) -> <dyn>
 //
 // Examples:
 //
-//     "{\"a\":1,\"b\":[1,2,3]}".decode_json()   // return {"a":1, "b":[1, 2, 3]}
-//     b"{\"a\":1,\"b\":[1,2,3]}".decode_json()  // return {"a":1, "b":[1, 2, 3]}
+//	"{\"a\":1,\"b\":[1,2,3]}".decode_json()   // return {"a":1, "b":[1, 2, 3]}
+//	b"{\"a\":1,\"b\":[1,2,3]}".decode_json()  // return {"a":1, "b":[1, 2, 3]}
 //
-//
-// Decode JSON Stream
+// # Decode JSON Stream
 //
 // decode_json_stream returns a list of objects described by the JSON stream
 // of the receiver or parameter:
 //
-//     <bytes>.decode_json_stream() -> <list<dyn>>
-//     <string>.decode_json_stream() -> <list<dyn>>
-//     decode_json_stream(<bytes>) -> <list<dyn>>
-//     decode_json_stream(<string>) -> <list<dyn>>
+//	<bytes>.decode_json_stream() -> <list<dyn>>
+//	<string>.decode_json_stream() -> <list<dyn>>
+//	decode_json_stream(<bytes>) -> <list<dyn>>
+//	decode_json_stream(<string>) -> <list<dyn>>
 //
 // Examples:
 //
-//     '{"a":1}{"b":2}'.decode_json_stream()   // return [{"a":1}, {"b":2}]
-//     b'{"a":1}{"b":2}'.decode_json_stream()  // return [{"a":1}, {"b":2}]
-//
+//	'{"a":1}{"b":2}'.decode_json_stream()   // return [{"a":1}, {"b":2}]
+//	b'{"a":1}{"b":2}'.decode_json_stream()  // return [{"a":1}, {"b":2}]
 func JSON(adapter ref.TypeAdapter) cel.EnvOption {
 	if adapter == nil {
 		adapter = types.DefaultTypeAdapter

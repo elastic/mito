@@ -38,88 +38,82 @@ import (
 //
 // For the examples below assume an input patterns map:
 //
-//     map[string]*regexp.Regexp{
-//         "foo":     regexp.MustCompile("foo(.)"),
-//         "foo_rep": regexp.MustCompile("(f)oo([ld])"),
-//     }
+//	map[string]*regexp.Regexp{
+//	    "foo":     regexp.MustCompile("foo(.)"),
+//	    "foo_rep": regexp.MustCompile("(f)oo([ld])"),
+//	}
 //
-// RE Match
+// # RE Match
 //
 // Returns whether the named pattern matches the receiver:
 //
-//     <bytes>.re_match(<string>) -> <bool>
-//     <string>.re_match(<string>) -> <bool>
+//	<bytes>.re_match(<string>) -> <bool>
+//	<string>.re_match(<string>) -> <bool>
 //
 // Examples:
 //
-//     'food'.re_match('foo')    // return true
-//     b'food'.re_match(b'foo')  // return true
+//	'food'.re_match('foo')    // return true
+//	b'food'.re_match(b'foo')  // return true
 //
-//
-// RE Find
+// # RE Find
 //
 // Returns a string or bytes of the named pattern's match:
 //
-//     <bytes>.re_find(<string>) -> <bytes>
-//     <string>.re_find(<string>) -> <string>
+//	<bytes>.re_find(<string>) -> <bytes>
+//	<string>.re_find(<string>) -> <string>
 //
 // Examples:
 //
-//     'food'.re_find('foo')    // return "food"
-//     b'food'.re_find(b'foo')  // return "Zm9vZA=="
+//	'food'.re_find('foo')    // return "food"
+//	b'food'.re_find(b'foo')  // return "Zm9vZA=="
 //
-//
-// RE Find All
+// # RE Find All
 //
 // Returns a list of strings or bytes of all the named pattern's matches:
 //
-//     <bytes>.re_find_all(<string>) -> <list<bytes>>
-//     <string>.re_find_all(<string>) -> <list<string>>
+//	<bytes>.re_find_all(<string>) -> <list<bytes>>
+//	<string>.re_find_all(<string>) -> <list<string>>
 //
 // Examples:
 //
-//     'food fool'.re_find_all('foo')  // return ["food", "fool"]
-//     b'food fool'.re_find_all(b'foo')  // return ["Zm9vZA==", "Zm9vZA=="]
+//	'food fool'.re_find_all('foo')  // return ["food", "fool"]
+//	b'food fool'.re_find_all(b'foo')  // return ["Zm9vZA==", "Zm9vZA=="]
 //
-//
-// RE Find Submatch
+// # RE Find Submatch
 //
 // Returns a list of strings or bytes of the named pattern's submatches:
 //
-//     <bytes>.re_find_submatch(<string>) -> <list<bytes>>
-//     <string>.re_find_submatch(<string>) -> <list<string>>
+//	<bytes>.re_find_submatch(<string>) -> <list<bytes>>
+//	<string>.re_find_submatch(<string>) -> <list<string>>
 //
 // Examples:
 //
-//     'food fool'.re_find_submatch('foo')   // return ["food", "d"]
-//     b'food fool'.re_find_submatch('foo')  // return ["Zm9vZA==", "ZA=="]
+//	'food fool'.re_find_submatch('foo')   // return ["food", "d"]
+//	b'food fool'.re_find_submatch('foo')  // return ["Zm9vZA==", "ZA=="]
 //
-//
-// RE Find All Submatch
+// # RE Find All Submatch
 //
 // Returns a list of lists of strings or bytes of all the named pattern's submatches:
 //
-//     <bytes>.re_find_all_submatch(<string>) -> <list<list<bytes>>>
-//     <string>.re_find_all_submatch(<string>) -> <list<list<string>>>
+//	<bytes>.re_find_all_submatch(<string>) -> <list<list<bytes>>>
+//	<string>.re_find_all_submatch(<string>) -> <list<list<string>>>
 //
 // Examples:
 //
-//     'food fool'.re_find_all_submatch('foo')  // return [["food", "d"], ["fool", "l"]]
+//	'food fool'.re_find_all_submatch('foo')  // return [["food", "d"], ["fool", "l"]]
 //
-//
-// RE Replace All
+// # RE Replace All
 //
 // Returns a strings or bytes applying a replacement to all matches of the named
 // pattern:
 //
-//     <bytes>.re_replace_all(<string>, <bytes>) -> <bytes>
-//     <string>.re_replace_all(<string>, <string>) -> <string>
+//	<bytes>.re_replace_all(<string>, <bytes>) -> <bytes>
+//	<string>.re_replace_all(<string>, <string>) -> <string>
 //
 // Examples:
 //
-//     'food fool'.re_replace_all('foo_rep', '${1}u${2}')    // return "fud ful"
-//     b'food fool'.re_replace_all('foo_rep', b'${1}u${2}')  // return "ZnVkIGZ1bA=="
-//
+//	'food fool'.re_replace_all('foo_rep', '${1}u${2}')    // return "fud ful"
+//	b'food fool'.re_replace_all('foo_rep', b'${1}u${2}')  // return "ZnVkIGZ1bA=="
 func Regexp(patterns map[string]*regexp.Regexp) cel.EnvOption {
 	return cel.Lib(regexpLib(patterns))
 }

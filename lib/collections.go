@@ -42,195 +42,186 @@ import (
 //
 // Examples:
 //
-//     {"a":1, "b":2}.as(v, v.a == 1)         // return true
-//     {"a":1, "b":2}.as(v, v)                // return {"a":1, "b":2}
-//     {"a":1, "b":2}.as(v, v.with({"c":3}))  // return {"a":1, "b":2, "c":3}
-//     {"a":1, "b":2}.as(v, [v, v])           // return [{"a":1, "b":2}, {"a":1, "b":2}]
+//	{"a":1, "b":2}.as(v, v.a == 1)         // return true
+//	{"a":1, "b":2}.as(v, v)                // return {"a":1, "b":2}
+//	{"a":1, "b":2}.as(v, v.with({"c":3}))  // return {"a":1, "b":2, "c":3}
+//	{"a":1, "b":2}.as(v, [v, v])           // return [{"a":1, "b":2}, {"a":1, "b":2}]
 //
-//
-// Collate
+// # Collate
 //
 // Returns a list of values obtained by traversing fields in the receiver with
 // the path or paths given as the string parameter. When a list is traversed all
 // children are include in the resulting list:
 //
-//     <list<dyn>>.collate(<string>) -> <list<dyn>>
-//     <list<dyn>>.collate(<list<string>>) -> <list<dyn>>
-//     <map<string,dyn>>.collate(<string>) -> <list<dyn>>
-//     <map<string,dyn>>.collate(<list<string>>) -> <list<dyn>>
+//	<list<dyn>>.collate(<string>) -> <list<dyn>>
+//	<list<dyn>>.collate(<list<string>>) -> <list<dyn>>
+//	<map<string,dyn>>.collate(<string>) -> <list<dyn>>
+//	<map<string,dyn>>.collate(<list<string>>) -> <list<dyn>>
 //
 // Examples:
 //
-//     Given v:
-//     {
-//             "a": [
-//                 {"b": 1},
-//                 {"b": 2},
-//                 {"b": 3}
-//             ],
-//             "b": [
-//                 {"b": -1, "c": 10},
-//                 {"b": -2, "c": 20},
-//                 {"b": -3, "c": 30}
-//             ]
-//     }
+//	Given v:
+//	{
+//	        "a": [
+//	            {"b": 1},
+//	            {"b": 2},
+//	            {"b": 3}
+//	        ],
+//	        "b": [
+//	            {"b": -1, "c": 10},
+//	            {"b": -2, "c": 20},
+//	            {"b": -3, "c": 30}
+//	        ]
+//	}
 //
-//     v.collate("a")             // return [{"b": 1}, {"b": 2}, {"b": 3}]
-//     v.collate("a.b")           // return [1, 2, 3]
-//     v.collate(["a.b", "b.b"])  // return [1, 2, 3, -1, -2, -3]
-//     v.collate(["a", "b.b"])    // return [{"b": 1 }, {"b": 2 }, {"b": 3 }, -1, -2, -3 ]
+//	v.collate("a")             // return [{"b": 1}, {"b": 2}, {"b": 3}]
+//	v.collate("a.b")           // return [1, 2, 3]
+//	v.collate(["a.b", "b.b"])  // return [1, 2, 3, -1, -2, -3]
+//	v.collate(["a", "b.b"])    // return [{"b": 1 }, {"b": 2 }, {"b": 3 }, -1, -2, -3 ]
 //
 // If the the path to be dropped includes a dot, it can be escaped with a literal
 // backslash. See drop below.
 //
-//
-// Drop
+// # Drop
 //
 // Returns the value of the receiver with the object at the given paths remove:
 //
-//     <list<dyn>>.drop(<string>) -> <list<dyn>>
-//     <list<dyn>>.drop(<list<string>>) -> <list<dyn>>
-//     <map<string,dyn>>.drop(<string>) -> <map<string,dyn>>
-//     <map<string,dyn>>.drop(<list<string>>) -> <map<string,dyn>>
+//	<list<dyn>>.drop(<string>) -> <list<dyn>>
+//	<list<dyn>>.drop(<list<string>>) -> <list<dyn>>
+//	<map<string,dyn>>.drop(<string>) -> <map<string,dyn>>
+//	<map<string,dyn>>.drop(<list<string>>) -> <map<string,dyn>>
 //
 // Examples:
 //
-//     Given v:
-//     {
-//             "a": [
-//                 {"b": 1},
-//                 {"b": 2},
-//                 {"b": 3}
-//             ],
-//             "b": [
-//                 {"b": -1, "c": 10},
-//                 {"b": -2, "c": 20},
-//                 {"b": -3, "c": 30}
-//             ]
-//     }
+//	Given v:
+//	{
+//	        "a": [
+//	            {"b": 1},
+//	            {"b": 2},
+//	            {"b": 3}
+//	        ],
+//	        "b": [
+//	            {"b": -1, "c": 10},
+//	            {"b": -2, "c": 20},
+//	            {"b": -3, "c": 30}
+//	        ]
+//	}
 //
-//     v.drop("a")             // return {"b": [{"b": -1, "c": 10}, {"b": -2, "c": 20}, {"b": -3, "c": 30}]}
-//     v.drop("a.b")           // return {"a": [{}, {}, {}], "b": [{"b": -1, "c": 10}, {"b": -2, "c": 20}, {"b": -3, "c": 30}]}
-//     v.drop(["a.b", "b.b"])  // return {"a": [{}, {}, {}], "b": [{"c": 10}, {"c": 20}, {"c": 30}]}
-//     v.drop(["a", "b.b"])    // return {"b": [{"c": 10}, {"c": 20}, {"c": 30}]}
+//	v.drop("a")             // return {"b": [{"b": -1, "c": 10}, {"b": -2, "c": 20}, {"b": -3, "c": 30}]}
+//	v.drop("a.b")           // return {"a": [{}, {}, {}], "b": [{"b": -1, "c": 10}, {"b": -2, "c": 20}, {"b": -3, "c": 30}]}
+//	v.drop(["a.b", "b.b"])  // return {"a": [{}, {}, {}], "b": [{"c": 10}, {"c": 20}, {"c": 30}]}
+//	v.drop(["a", "b.b"])    // return {"b": [{"c": 10}, {"c": 20}, {"c": 30}]}
 //
 // If the the path to be dropped includes a dot, it can be escaped with a literal
 // backslash.
 //
 // Examples:
 //
-//     Given v:
-//     {
-//             "dotted.path": [
-//                 {"b": -1, "c": 10},
-//                 {"b": -2, "c": 20},
-//                 {"b": -3, "c": 30}
-//             ]
-//     }
+//	Given v:
+//	{
+//	        "dotted.path": [
+//	            {"b": -1, "c": 10},
+//	            {"b": -2, "c": 20},
+//	            {"b": -3, "c": 30}
+//	        ]
+//	}
 //
-//     v.drop("dotted\\.path.b")  // return {"dotted.path": [{"c": 10}, {"c": 20}, {"c": 30}]}
+//	v.drop("dotted\\.path.b")  // return {"dotted.path": [{"c": 10}, {"c": 20}, {"c": 30}]}
 //
-//
-// Drop Empty
+// # Drop Empty
 //
 // Returns the value of the receiver with all empty lists and maps removed,
 // recursively
 //
-//     <list<dyn>>.drop_empty() -> <list<dyn>>
-//     <map<string,dyn>>.drop_empty() -> <map<string,dyn>>
+//	<list<dyn>>.drop_empty() -> <list<dyn>>
+//	<map<string,dyn>>.drop_empty() -> <map<string,dyn>>
 //
 // Examples:
 //
-//     Given v:
-//     {
-//             "a": [
-//                 {},
-//                 {},
-//                 {}
-//             ],
-//             "b": [
-//                 {"b": -1, "c": 10},
-//                 {"b": -2, "c": 20},
-//                 {"b": -3, "c": 30}
-//             ]
-//     }
+//	Given v:
+//	{
+//	        "a": [
+//	            {},
+//	            {},
+//	            {}
+//	        ],
+//	        "b": [
+//	            {"b": -1, "c": 10},
+//	            {"b": -2, "c": 20},
+//	            {"b": -3, "c": 30}
+//	        ]
+//	}
 //
-//     v.drop_empty()  // return {"b":[{"b":-1, "c":10}, {"b":-2, "c":20}, {"b":-3, "c":30}]}
+//	v.drop_empty()  // return {"b":[{"b":-1, "c":10}, {"b":-2, "c":20}, {"b":-3, "c":30}]}
 //
-//
-// Flatten
+// # Flatten
 //
 // Returns a list of non-list objects resulting from the depth-first
 // traversal of a nested list:
 //
-//     <list<dyn>...>.flatten() -> <list<dyn>>
+//	<list<dyn>...>.flatten() -> <list<dyn>>
 //
 // Examples:
 //
-//     [[1],[2,3],[[[4]],[5,6]]].flatten()                     // return [1, 2, 3, 4, 5, 6]
-//     [[{"a":1,"b":[10, 11]}],[2,3],[[[4]],[5,6]]].flatten()  // return [{"a":1, "b":[10, 11]}, 2, 3, 4, 5, 6]
+//	[[1],[2,3],[[[4]],[5,6]]].flatten()                     // return [1, 2, 3, 4, 5, 6]
+//	[[{"a":1,"b":[10, 11]}],[2,3],[[[4]],[5,6]]].flatten()  // return [{"a":1, "b":[10, 11]}, 2, 3, 4, 5, 6]
 //
-//
-// Max
+// # Max
 //
 // Returns the maximum value of a list of comparable objects:
 //
-//     <list<dyn>>.max() -> <dyn>
-//     max(<list<dyn>>) -> <dyn>
+//	<list<dyn>>.max() -> <dyn>
+//	max(<list<dyn>>) -> <dyn>
 //
 // Examples:
 //
-//     [1,2,3,4,5,6,7].max()  // return 7
-//     max([1,2,3,4,5,6,7])   // return 7
+//	[1,2,3,4,5,6,7].max()  // return 7
+//	max([1,2,3,4,5,6,7])   // return 7
 //
-//
-// Min
+// # Min
 //
 // Returns the minimum value of a list of comparable objects:
 //
-//     <list<dyn>>.min() -> <dyn>
-//     min(<list<dyn>>) -> <dyn>
+//	<list<dyn>>.min() -> <dyn>
+//	min(<list<dyn>>) -> <dyn>
 //
 // Examples:
 //
-//     [1,2,3,4,5,6,7].min()  // return 1
-//     min([1,2,3,4,5,6,7])   // return 1
+//	[1,2,3,4,5,6,7].min()  // return 1
+//	min([1,2,3,4,5,6,7])   // return 1
 //
-// With
+// # With
 //
 // Returns the receiver's value with the value of the parameter updating
 // or adding fields:
 //
-//     <map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
+//	<map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
 //
 // Examples:
 //
-//     {"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":10, "b":2, "c":3}
+//	{"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":10, "b":2, "c":3}
 //
-//
-// With Replace
+// # With Replace
 //
 // Returns the receiver's value with the value of the parameter replacing
 // existing fields:
 //
-//     <map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
+//	<map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
 //
 // Examples:
 //
-//     {"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":10, "b":2}
+//	{"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":10, "b":2}
 //
-//
-// With Update
+// # With Update
 //
 // Returns the receiver's value with the value of the parameter updating
 // the map without replacing any existing fields:
 //
-//     <map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
+//	<map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
 //
 // Examples:
 //
-//     {"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":1, "b":2, "c":3}
-//
+//	{"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":1, "b":2, "c":3}
 func Collections() cel.EnvOption {
 	return cel.Lib(collectionsLib{})
 }
