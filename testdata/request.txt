@@ -7,7 +7,7 @@ cmp stdout want.txt
 	request("GET", "http://www.example.com/"),
 	request("GET", "http://www.example.com/", "request data"),
 	request("GET", "http://www.example.com/").with({"Header":{
-		"Authorization": "Basic "+string(base64("username:password")),
+		"Authorization": ["Basic "+string(base64("username:password"))],
 	}}),
 	get_request("http://www.example.com/"),
 	post_request("http://www.example.com/", "text/plain", "request data"),
@@ -41,7 +41,9 @@ cmp stdout want.txt
 		"Close": false,
 		"ContentLength": 0,
 		"Header": {
-			"Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+			"Authorization": [
+				"Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+			]
 		},
 		"Host": "www.example.com",
 		"Method": "GET",

@@ -1,0 +1,22 @@
+mito -use http src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+request("GET", "http://www.example.com/").basic_authentication("username", "password")
+-- want.txt --
+{
+	"Close": false,
+	"ContentLength": 0,
+	"Header": {
+		"Authorization": [
+			"Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+		]
+	},
+	"Host": "www.example.com",
+	"Method": "GET",
+	"Proto": "HTTP/1.1",
+	"ProtoMajor": 1,
+	"ProtoMinor": 1,
+	"URL": "http://www.example.com/"
+}
