@@ -1,0 +1,217 @@
+mito -cfg cfg.yaml src.cel
+! stderr .
+cmp stdout want.txt
+
+-- cfg.yaml --
+xsd:
+  "order": "order.xsd"
+-- src.cel --
+{
+	"single_element": file('order_one.xml').as(f, {
+		"with_xsd": f.decode_xml("order"),
+		"without_xsd": f.decode_xml(),
+	}),
+	"multi_element": file('order_two.xml').as(f, {
+		"with_xsd": f.decode_xml("order"),
+		"without_xsd": f.decode_xml(),
+	})
+}
+-- order.xsd --
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="order">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="sender" type="xs:string"/>
+        <xs:element name="address">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="company" type="xs:string"/>
+              <xs:element name="address" type="xs:string"/>
+              <xs:element name="city" type="xs:string"/>
+              <xs:element name="country" type="xs:string"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="item" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="note" type="xs:string" minOccurs="0"/>
+              <xs:element name="number" type="xs:positiveInteger"/>
+              <xs:element name="cost" type="xs:decimal"/>
+              <xs:element name="sent" type="xs:boolean"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="orderid" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+-- order_one.xml --
+<?xml version="1.0" encoding="UTF-8"?>
+<order orderid="56733" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="sales.xsd">
+  <sender>Ástríðr Ragnar</sender>
+  <address>
+    <name>Joord Lennart</name>
+    <company>Sydøstlige Gruppe</company>
+    <address>Beekplantsoen 594, 2 hoog, 6849 IG</address>
+    <city>Boekend</city>
+    <country>Netherlands</country>
+  </address>
+  <item>
+    <name>Egil's Saga</name>
+    <note>Free Sample</note>
+    <number>1</number>
+    <cost>99.95</cost>
+    <sent>FALSE</sent>
+  </item>
+</order>
+-- order_two.xml --
+<?xml version="1.0" encoding="UTF-8"?>
+<order orderid="56733" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="sales.xsd">
+  <sender>Ástríðr Ragnar</sender>
+  <address>
+    <name>Joord Lennart</name>
+    <company>Sydøstlige Gruppe</company>
+    <address>Beekplantsoen 594, 2 hoog, 6849 IG</address>
+    <city>Boekend</city>
+    <country>Netherlands</country>
+  </address>
+  <item>
+    <name>Egil's Saga</name>
+    <note>Free Sample</note>
+    <number>1</number>
+    <cost>99.95</cost>
+    <sent>FALSE</sent>
+  </item>
+  <item>
+    <name>Auðunar þáttr vestfirska</name>
+    <number>1</number>
+    <cost>9.90</cost>
+    <sent>TRUE</sent>
+  </item>
+</order>
+-- want.txt --
+{
+	"multi_element": {
+		"with_xsd": {
+			"doc": {
+				"order": {
+					"address": {
+						"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+						"city": "Boekend",
+						"company": "Sydøstlige Gruppe",
+						"country": "Netherlands",
+						"name": "Joord Lennart"
+					},
+					"item": [
+						{
+							"cost": 99.95,
+							"name": "Egil's Saga",
+							"note": "Free Sample",
+							"number": 1,
+							"sent": false
+						},
+						{
+							"cost": 9.9,
+							"name": "Auðunar þáttr vestfirska",
+							"number": 1,
+							"sent": true
+						}
+					],
+					"noNamespaceSchemaLocation": "sales.xsd",
+					"orderid": "56733",
+					"sender": "Ástríðr Ragnar",
+					"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+				}
+			}
+		},
+		"without_xsd": {
+			"doc": {
+				"order": {
+					"address": {
+						"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+						"city": "Boekend",
+						"company": "Sydøstlige Gruppe",
+						"country": "Netherlands",
+						"name": "Joord Lennart"
+					},
+					"item": [
+						{
+							"cost": "99.95",
+							"name": "Egil's Saga",
+							"note": "Free Sample",
+							"number": "1",
+							"sent": "FALSE"
+						},
+						{
+							"cost": "9.90",
+							"name": "Auðunar þáttr vestfirska",
+							"number": "1",
+							"sent": "TRUE"
+						}
+					],
+					"noNamespaceSchemaLocation": "sales.xsd",
+					"orderid": "56733",
+					"sender": "Ástríðr Ragnar",
+					"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+				}
+			}
+		}
+	},
+	"single_element": {
+		"with_xsd": {
+			"doc": {
+				"order": {
+					"address": {
+						"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+						"city": "Boekend",
+						"company": "Sydøstlige Gruppe",
+						"country": "Netherlands",
+						"name": "Joord Lennart"
+					},
+					"item": [
+						{
+							"cost": 99.95,
+							"name": "Egil's Saga",
+							"note": "Free Sample",
+							"number": 1,
+							"sent": false
+						}
+					],
+					"noNamespaceSchemaLocation": "sales.xsd",
+					"orderid": "56733",
+					"sender": "Ástríðr Ragnar",
+					"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+				}
+			}
+		},
+		"without_xsd": {
+			"doc": {
+				"order": {
+					"address": {
+						"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+						"city": "Boekend",
+						"company": "Sydøstlige Gruppe",
+						"country": "Netherlands",
+						"name": "Joord Lennart"
+					},
+					"item": {
+						"cost": "99.95",
+						"name": "Egil's Saga",
+						"note": "Free Sample",
+						"number": "1",
+						"sent": "FALSE"
+					},
+					"noNamespaceSchemaLocation": "sales.xsd",
+					"orderid": "56733",
+					"sender": "Ástríðr Ragnar",
+					"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+				}
+			}
+		}
+	}
+}
