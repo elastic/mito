@@ -19,19 +19,17 @@ package lib
 
 import (
 	"bytes"
-	"encoding/xml"
-	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
-	"aqwari.net/xml/xsd"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+
+	"github.com/elastic/mito/lib/xml"
 )
 
 // XML returns a cel.EnvOption to configure extended functions for XML
@@ -67,10 +65,10 @@ func XML(adapter ref.TypeAdapter, xsd map[string]string) (cel.EnvOption, error) 
 	if adapter == nil {
 		adapter = types.DefaultTypeAdapter
 	}
-	details := make(map[string]map[string]detail, len(xsd))
+	details := make(map[string]map[string]xml.Detail, len(xsd))
 	var err error
 	for name, doc := range xsd {
-		details[name], err = pathDetails([]byte(doc))
+		details[name], err = xml.Details([]byte(doc))
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +79,7 @@ func XML(adapter ref.TypeAdapter, xsd map[string]string) (cel.EnvOption, error) 
 type xmlLib struct {
 	adapter ref.TypeAdapter
 
-	xsdDetails map[string]map[string]detail
+	xsdDetails map[string]map[string]xml.Detail
 }
 
 func (xmlLib) CompileOptions() []cel.EnvOption {
@@ -179,7 +177,7 @@ func (l xmlLib) decodeXMLWithXSD(arg0, arg1 ref.Val) ref.Val {
 	default:
 		return types.NoSuchOverloadErr()
 	}
-	cdata, v, err := unmarshal(r, details)
+	cdata, v, err := xml.Unmarshal(r, details)
 	if err != nil {
 		return types.NewErr("failed to unmarshal XML document: %v", err)
 	}
@@ -191,232 +189,4 @@ func (l xmlLib) decodeXMLWithXSD(arg0, arg1 ref.Val) ref.Val {
 		m["doc"] = v
 	}
 	return l.adapter.NativeToValue(m)
-}
-
-// detail is a type and plurality detail node in a XSD tree.
-type detail struct {
-	typ    typ
-	plural bool
-
-	children map[string]detail
-}
-
-func (d detail) isZero() bool {
-	return d.typ == 0 && !d.plural && d.children == nil
-}
-
-// typ is an enriched JSON type system reflecting Go's treatment of it for numbers.
-type typ int
-
-const (
-	stringType = iota
-	intType
-	floatType
-	boolType
-)
-
-// pathDetails returns type and plurality details obtained from the provided XSD doc.
-func pathDetails(doc []byte) (map[string]detail, error) {
-	schema, err := xsd.Parse(doc)
-	if err != nil {
-		return nil, err
-	}
-
-	tree := make(map[string]string)
-	leaves := make(map[string]detail)
-	for _, s := range schema {
-		for n, t := range s.Types {
-			switch t := t.(type) {
-			case xsd.Builtin:
-			case *xsd.SimpleType:
-			case *xsd.ComplexType:
-				// Ignore external name-spaced names.
-				if t.Name.Space != "" {
-					continue
-				}
-				// Ignore anonymous node and the root.
-				if strings.HasPrefix(n.Local, "_") {
-					continue
-				}
-				for _, e := range t.Elements {
-					var d detail
-					tree[e.Name.Local] = n.Local
-					switch builtinTypeFor(e.Type) {
-					case xsd.Boolean:
-						d.typ = boolType
-					case xsd.Int, xsd.Integer, xsd.Long, xsd.NonNegativeInteger,
-						xsd.NonPositiveInteger, xsd.PositiveInteger, xsd.Short,
-						xsd.UnsignedByte, xsd.UnsignedInt, xsd.UnsignedLong, xsd.UnsignedShort:
-						d.typ = intType
-					case xsd.Decimal, xsd.Double, xsd.Float:
-						d.typ = floatType
-					}
-					d.plural = e.Plural
-					if d.isZero() {
-						continue
-					}
-					leaves[e.Name.Local] = d
-				}
-			default:
-				panic(fmt.Sprintf("unknown type: %T", t))
-			}
-		}
-	}
-
-	details := detail{children: make(map[string]detail)}
-	var path []string
-	for p, d := range leaves {
-		path = append(path[:0], p)
-		for i := 0; i <= len(tree); i++ {
-			parent, ok := tree[p]
-			if !ok {
-				break
-			}
-			path = append(path, parent)
-			p = parent
-		}
-		reverse(path)
-
-		n := details
-		for i, e := range path {
-			c := n.children[e]
-			if c.children == nil && i < len(path)-1 {
-				c.children = make(map[string]detail)
-			}
-			if i == len(path)-1 {
-				c.typ = d.typ
-				c.plural = d.plural
-			}
-			n.children[e] = c
-			n = c
-		}
-	}
-
-	return details.children, nil
-}
-
-func reverse(s []string) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-}
-
-// builtinTypeFor returns the built-in type for the type if available. Otherwise it returns xsd.Anytype.
-func builtinTypeFor(typ xsd.Type) xsd.Builtin {
-	for {
-		switch t := typ.(type) {
-		case xsd.Builtin:
-			return t
-		case *xsd.SimpleType:
-			typ = xsd.Base(t.Base)
-		default:
-			return xsd.AnyType
-		}
-	}
-}
-
-// unmarshal decodes the data in r using type and plurality hints in details. If details is
-// nil, best effort plurality assessment will be made and all data will be represented as
-// strings.
-func unmarshal(r io.Reader, details map[string]detail) (cdata string, elems map[string]any, err error) {
-	dec := xml.NewDecoder(r)
-	dec.CharsetReader = func(_ string, input io.Reader) (io.Reader, error) { return input, nil }
-	return walkXML(dec, nil, details)
-}
-
-func walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]detail) (cdata string, elems map[string]any, err error) {
-	elems = map[string]any{}
-
-	for {
-		t, err := dec.Token()
-		if err != nil {
-			if err == io.EOF {
-				return "", elems, nil
-			}
-			return "", nil, err
-		}
-
-		switch elem := t.(type) {
-		case xml.StartElement:
-			key := elem.Name.Local
-			det := details[key]
-
-			var part map[string]any
-			cdata, part, err = walkXML(dec, elem.Attr, det.children)
-			if err != nil {
-				return "", nil, err
-			}
-
-			// Combine sub-elements and cdata.
-			var add any = part
-			if len(part) == 0 {
-				add = cdata
-			} else if len(cdata) != 0 {
-				part["#text"] = cdata
-			}
-
-			// Add the data to the current object while taking into account
-			// if the current key already exists (in the case of lists).
-			value := elems[key]
-			switch v := value.(type) {
-			case nil:
-				add = entype(add, det.typ)
-				if det.plural {
-					elems[key] = []any{add}
-				} else {
-					elems[key] = add
-				}
-			case []any:
-				add = entype(add, det.typ)
-				elems[key] = append(v, add)
-			default:
-				add = entype(add, det.typ)
-				elems[key] = []any{v, add}
-			}
-
-		case xml.CharData:
-			cdata = string(bytes.TrimSpace(elem.Copy()))
-
-		case xml.EndElement:
-			for _, attr := range attrs {
-				elems[attr.Name.Local] = attr.Value
-			}
-			return cdata, elems, nil
-		}
-	}
-}
-
-// entype attempts to render the element value as the expected type, falling
-// back to a string if it is not possible.
-func entype(v any, t typ) any {
-	switch v := v.(type) {
-	case string:
-		switch t {
-		case boolType:
-			switch v {
-			case "TRUE":
-				return true
-			case "FALSE":
-				return false
-			default:
-				return v
-			}
-		case intType:
-			i, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				return v
-			}
-			return i
-		case floatType:
-			f, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				return v
-			}
-			return f
-		default:
-			return v
-		}
-	default:
-		return v
-	}
 }

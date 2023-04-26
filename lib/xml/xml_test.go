@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package lib
+package xml
 
 import (
 	"strings"
@@ -26,7 +26,7 @@ import (
 
 var pathDetailsTests = []struct {
 	xsd  string
-	want map[string]detail
+	want map[string]Detail
 }{
 	0: {
 		xsd: `
@@ -133,26 +133,26 @@ var pathDetailsTests = []struct {
 <xs:element name="EXPIRATION_DATETIME" type="xs:string"/>
 </xs:schema>
 `,
-		want: map[string]detail{
+		want: map[string]Detail{
 			"REPORT_LIST_OUTPUT": {
-				children: map[string]detail{
+				Children: map[string]Detail{
 					"REQUEST": {
-						children: map[string]detail{
+						Children: map[string]Detail{
 							"PARAM_LIST": {
-								children: map[string]detail{
+								Children: map[string]Detail{
 									"PARAM": {
-										plural: true,
+										Plural: true,
 									},
 								},
 							},
 						},
 					},
 					"RESPONSE": {
-						children: map[string]detail{
+						Children: map[string]Detail{
 							"REPORT_LIST": {
-								children: map[string]detail{
+								Children: map[string]Detail{
 									"REPORT": {
-										plural: true,
+										Plural: true,
 									},
 								},
 							},
@@ -198,20 +198,20 @@ var pathDetailsTests = []struct {
   </xs:element>
 </xs:schema>
 `,
-		want: map[string]detail{
+		want: map[string]Detail{
 			"order": {
-				children: map[string]detail{
+				Children: map[string]Detail{
 					"item": {
-						plural: true,
-						children: map[string]detail{
+						Plural: true,
+						Children: map[string]Detail{
 							"cost": {
-								typ: floatType,
+								Type: FloatType,
 							},
 							"number": {
-								typ: intType,
+								Type: IntType,
 							},
 							"sent": {
-								typ: boolType,
+								Type: BoolType,
 							},
 						},
 					},
@@ -224,11 +224,11 @@ var pathDetailsTests = []struct {
 func TestPathDetails(t *testing.T) {
 	for _, test := range pathDetailsTests {
 		t.Run("", func(t *testing.T) {
-			got, err := pathDetails([]byte(test.xsd))
+			got, err := Details([]byte(test.xsd))
 			if err != nil {
 				t.Errorf("failed to get path details: %v", err)
 			}
-			allow := cmp.AllowUnexported(detail{})
+			allow := cmp.AllowUnexported(Detail{})
 			if !cmp.Equal(got, test.want, allow) {
 				t.Errorf("unexpected result:\n--- want\n+++ got\n%s", cmp.Diff(test.want, got, allow))
 			}
@@ -499,11 +499,11 @@ var decodeXMLTests = []struct {
 func TestDecodeXML(t *testing.T) {
 	for _, test := range decodeXMLTests {
 		t.Run("", func(t *testing.T) {
-			det, err := pathDetails([]byte(test.xsd))
+			det, err := Details([]byte(test.xsd))
 			if err != nil {
 				t.Fatalf("failed to get path details: %v", err)
 			}
-			gotCDATA, gotElems, err := unmarshal(strings.NewReader(test.doc), det)
+			gotCDATA, gotElems, err := Unmarshal(strings.NewReader(test.doc), det)
 			if err != nil {
 				t.Errorf("failed to decode doc: %v", err)
 			}
