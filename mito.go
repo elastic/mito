@@ -94,6 +94,23 @@ func Main() int {
 			}
 			libs = append(libs, lib.Regexp(regexps))
 		}
+		if len(cfg.XSDs) != 0 {
+			xsds := make(map[string]string)
+			for name, path := range cfg.XSDs {
+				b, err := os.ReadFile(path)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return 2
+				}
+				xsds[name] = string(b)
+			}
+			xml, err := lib.XML(nil, xsds)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 2
+			}
+			libs = append(libs, xml)
+		}
 	}
 	if *use == "all" {
 		for _, l := range libMap {
@@ -250,4 +267,5 @@ func toUpper(p []byte) {
 type config struct {
 	Globals map[string]interface{} `yaml:"globals"`
 	Regexps map[string]string      `yaml:"regexp"`
+	XSDs    map[string]string      `yaml:"xsd"`
 }

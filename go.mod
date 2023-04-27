@@ -3,6 +3,7 @@ module github.com/elastic/mito
 go 1.18
 
 require (
+	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
 	github.com/google/cel-go v0.13.0
@@ -21,6 +22,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
+	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/text v0.3.8 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
