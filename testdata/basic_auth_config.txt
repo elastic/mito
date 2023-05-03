@@ -1,0 +1,29 @@
+serve hello.text user password
+expand src_var.cel src.cel
+cmpenv src.cel src_var.cel 
+
+mito -use http -cfg cfg_good.yaml src.cel
+cmp stdout want_good.txt
+
+mito -use http -cfg cfg_bad.yaml src.cel
+cmp stdout want_bad.txt
+
+-- src_var.cel --
+// $URL is set by the serve command and ${URL} is expanded by the expand command.
+string(get("${URL}").Body)
+-- hello.text --
+hello
+-- cfg_good.yaml --
+auth:
+  basic:
+    username: user
+    password: password
+-- want_good.txt --
+"hello\n"
+-- cfg_bad.yaml --
+auth:
+  basic:
+    username: user
+    password: letmein
+-- want_bad.txt --
+"password mismatch"
