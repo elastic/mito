@@ -20,6 +20,8 @@ package mito
 import (
 	"encoding/base64"
 	"flag"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -50,6 +52,8 @@ func TestScripts(t *testing.T) {
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"base64": bas64decode,
+			"serve":  serve,
+			"expand": expand,
 		},
 	}
 	testscript.Run(t, p)
@@ -57,7 +61,7 @@ func TestScripts(t *testing.T) {
 
 func bas64decode(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
-		ts.Fatalf("unsupported: ! cd")
+		ts.Fatalf("unsupported: ! base64")
 	}
 	if len(args) != 2 {
 		ts.Fatalf("usage: base64 src dst")
@@ -68,6 +72,59 @@ func bas64decode(ts *testscript.TestScript, neg bool, args []string) {
 	n, err := base64.StdEncoding.Decode(dst, src)
 	ts.Check(err)
 	ts.Check(os.WriteFile(ts.MkAbs(args[1]), dst[:n], 0o644))
+}
+
+func serve(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("unsupported: ! serve")
+	}
+	if len(args) != 1 && len(args) != 3 {
+		ts.Fatalf("usage: serve body [user password]")
+	}
+	var (
+		srv *httptest.Server
+
+		user, pass string
+	)
+	body, err := os.ReadFile(ts.MkAbs(args[0]))
+	ts.Check(err)
+	if len(args) == 3 {
+		user = args[1]
+		pass = args[2]
+	}
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		u, p, _ := req.BasicAuth()
+		// Obvious security anti-patterns are obvious; for testing.
+		if user != "" && user != u {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("user mismatch"))
+			return
+		}
+		if pass != "" && pass != p {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("password mismatch"))
+			return
+		}
+		w.Write(body)
+	}))
+	ts.Setenv("URL", srv.URL)
+	ts.Defer(func() { srv.Close() })
+}
+
+func expand(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("unsupported: ! expand")
+	}
+	if len(args) != 2 {
+		ts.Fatalf("usage: expand src dst")
+	}
+	src, err := os.ReadFile(ts.MkAbs(args[0]))
+	ts.Check(err)
+	src = []byte(os.Expand(string(src), func(key string) string {
+		return ts.Getenv(key)
+	}))
+	err = os.WriteFile(ts.MkAbs(args[1]), src, 0o644)
+	ts.Check(err)
 }
 
 func TestSend(t *testing.T) {

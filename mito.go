@@ -24,10 +24,14 @@ package mito
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -37,6 +41,10 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/interpreter"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
+	"golang.org/x/oauth2/endpoints"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -110,6 +118,22 @@ func Main() int {
 				return 2
 			}
 			libs = append(libs, xml)
+		}
+		if cfg.Auth != nil {
+			switch auth := cfg.Auth; {
+			case auth.Basic != nil && auth.OAuth2 != nil:
+				fmt.Fprintln(os.Stderr, "configured basic authentication and OAuth2")
+				return 2
+			case auth.Basic != nil:
+				libMap["http"] = lib.HTTP(nil, nil, auth.Basic)
+			case auth.OAuth2 != nil:
+				client, err := oAuth2Client(*auth.OAuth2)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return 2
+				}
+				libMap["http"] = lib.HTTP(client, nil, nil)
+			}
 		}
 	}
 	if *use == "all" {
@@ -268,4 +292,118 @@ type config struct {
 	Globals map[string]interface{} `yaml:"globals"`
 	Regexps map[string]string      `yaml:"regexp"`
 	XSDs    map[string]string      `yaml:"xsd"`
+	Auth    *authConfig            `yaml:"auth"`
+}
+
+type authConfig struct {
+	Basic  *lib.BasicAuth `yaml:"basic"`
+	OAuth2 *oAuth2        `yaml:"oauth2"`
+}
+
+type oAuth2 struct {
+	Provider string `yaml:"provider"`
+
+	ClientID       string     `yaml:"client.id"`
+	ClientSecret   *string    `yaml:"client.secret"`
+	EndpointParams url.Values `yaml:"endpoint_params"`
+	Password       string     `yaml:"password"`
+	Scopes         []string   `yaml:"scopes"`
+	TokenURL       string     `yaml:"token_url"`
+	User           string     `yaml:"user"`
+
+	GoogleCredentialsFile  string `yaml:"google.credentials_file"`
+	GoogleCredentialsJSON  string `yaml:"google.credentials_json"`
+	GoogleJWTFile          string `yaml:"google.jwt_file"`
+	GoogleJWTJSON          string `yaml:"google.jwt_json"`
+	GoogleDelegatedAccount string `yaml:"google.delegated_account"`
+
+	AzureTenantID string `yaml:"azure.tenant_id"`
+	AzureResource string `yaml:"azure.resource"`
+}
+
+func oAuth2Client(cfg oAuth2) (*http.Client, error) {
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{})
+
+	switch prov := strings.ToLower(cfg.Provider); prov {
+	case "":
+		if cfg.User != "" || cfg.Password != "" {
+			var clientSecret string
+			if cfg.ClientSecret != nil {
+				clientSecret = *cfg.ClientSecret
+			}
+			oauth2cfg := &oauth2.Config{
+				ClientID:     cfg.ClientID,
+				ClientSecret: clientSecret,
+				Endpoint: oauth2.Endpoint{
+					TokenURL:  cfg.TokenURL,
+					AuthStyle: oauth2.AuthStyleAutoDetect,
+				},
+			}
+			token, err := oauth2cfg.PasswordCredentialsToken(ctx, cfg.User, cfg.Password)
+			if err != nil {
+				return nil, fmt.Errorf("oauth2: error loading credentials using user and password: %w", err)
+			}
+			return oauth2cfg.Client(ctx, token), nil
+		}
+
+		fallthrough
+	case "azure":
+		var token string
+		if prov == "azure" {
+			if cfg.TokenURL == "" {
+				token = endpoints.AzureAD(cfg.AzureTenantID).TokenURL
+			}
+			if cfg.AzureResource != "" {
+				if cfg.EndpointParams == nil {
+					cfg.EndpointParams = make(url.Values)
+				}
+				cfg.EndpointParams.Set("resource", cfg.AzureResource)
+			}
+		}
+		var clientSecret string
+		if cfg.ClientSecret != nil {
+			clientSecret = *cfg.ClientSecret
+		}
+		return (&clientcredentials.Config{
+			ClientID:       cfg.ClientID,
+			ClientSecret:   clientSecret,
+			TokenURL:       token,
+			Scopes:         cfg.Scopes,
+			EndpointParams: cfg.EndpointParams,
+		}).Client(ctx), nil
+
+	case "google":
+		creds, err := google.FindDefaultCredentials(ctx, cfg.Scopes...)
+		if err == nil {
+			return nil, fmt.Errorf("oauth2: error loading default credentials: %w", err)
+		}
+		cfg.GoogleCredentialsJSON = string(creds.JSON)
+
+		if cfg.GoogleJWTFile != "" {
+			b, err := os.ReadFile(cfg.GoogleJWTFile)
+			if err != nil {
+				return nil, err
+			}
+			cfg.GoogleJWTJSON = string(b)
+		}
+		if cfg.GoogleJWTJSON != "" {
+			if !json.Valid([]byte(cfg.GoogleJWTJSON)) {
+				return nil, fmt.Errorf("invalid google jwt: %s", cfg.GoogleJWTJSON)
+			}
+			googCfg, err := google.JWTConfigFromJSON([]byte(cfg.GoogleJWTJSON), cfg.Scopes...)
+			if err != nil {
+				return nil, fmt.Errorf("oauth2: error loading jwt credentials: %w", err)
+			}
+			googCfg.Subject = cfg.GoogleDelegatedAccount
+			return googCfg.Client(ctx), nil
+		}
+
+		creds, err = google.CredentialsFromJSON(ctx, []byte(cfg.GoogleCredentialsJSON), cfg.Scopes...)
+		if err != nil {
+			return nil, fmt.Errorf("oauth2: error loading credentials: %w", err)
+		}
+		return oauth2.NewClient(ctx, creds.TokenSource), nil
+	default:
+		return nil, errors.New("oauth2: unknown provider")
+	}
 }

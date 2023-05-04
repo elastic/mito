@@ -1,22 +1,41 @@
+serve hello.text user password
+expand src_var.cel src.cel
+cmpenv src.cel src_var.cel 
+
 mito -use http src.cel
 ! stderr .
 cmp stdout want.txt
 
--- src.cel --
-request("GET", "http://www.example.com/").basic_authentication("username", "password")
+-- hello.text --
+hello
+-- src_var.cel --
+// $URL is set by the serve command and ${URL} is expanded by the expand command.
+{
+	"request": request("GET", "http://www.example.com/").basic_authentication("username", "password"),
+	"no_auth": string(request("GET", "${URL}").do_request().Body),
+	"mismatch_user": string(request("GET", "${URL}").basic_authentication("", "").do_request().Body),
+	"mismatch_pass": string(request("GET", "${URL}").basic_authentication("user", "").do_request().Body),
+	"matched": string(request("GET", "${URL}").basic_authentication("user", "password").do_request().Body),
+}
 -- want.txt --
 {
-	"Close": false,
-	"ContentLength": 0,
-	"Header": {
-		"Authorization": [
-			"Basic dXNlcm5hbWU6cGFzc3dvcmQ="
-		]
-	},
-	"Host": "www.example.com",
-	"Method": "GET",
-	"Proto": "HTTP/1.1",
-	"ProtoMajor": 1,
-	"ProtoMinor": 1,
-	"URL": "http://www.example.com/"
+	"matched": "hello\n",
+	"mismatch_pass": "password mismatch",
+	"mismatch_user": "user mismatch",
+	"no_auth": "user mismatch",
+	"request": {
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {
+			"Authorization": [
+				"Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+			]
+		},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	}
 }

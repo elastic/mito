@@ -1,0 +1,14 @@
+serve hello.text
+expand src_var.cel src.cel
+cmpenv src.cel src_var.cel 
+
+mito -use http src.cel
+cmp stdout want.txt
+
+-- hello.text --
+hello
+-- src_var.cel --
+// $URL is set by the serve command and ${URL} is expanded by the expand command.
+string(request("GET", "${URL}").do_request().Body)
+-- want.txt --
+"hello\n"
