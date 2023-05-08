@@ -1,10 +1,6 @@
 # Mito
 
-(Mito is experimental and subject to change).
-
-Mito is a sketch for a message stream processing engine based on [CEL](https://github.com/google/cel-go). Mito provides tools in the lib directory to support collection processing, timestamp handling and other common tasks (see test snippets in [testdata](./testdata) and docs at https://godocs.io/github.com/elastic/mito/lib).
-
-Some features of mito are firmly within the realms of dark arts.
+Mito is a message stream processing engine based on [CEL](https://github.com/google/cel-go). Mito provides tools in the lib directory to support collection processing, timestamp handling and other common tasks (see test snippets in [testdata](./testdata) and docs at https://pkg.go.dev/github.com/elastic/mito/lib).
 
 The `mito` command will apply CEL expressions to a JSON value input under the label `state` within the CEL environment. This is intended to be used as a debugging and playground tool.
 
