@@ -35,7 +35,7 @@ import (
 // XML returns a cel.EnvOption to configure extended functions for XML
 // decoding. The parameter specifies the CEL type adapter to use and a
 // map of names to XSD document descriptions.
-// A nil adapter is valid an will give an option using the default type
+// A nil adapter is valid and will give an option using the default type
 // adapter, types.DefaultTypeAdapter. A nil XSD mapping is valid and
 // will give an option that performs best effort decoding leaving all
 // values as strings and elevating elements to lists when more than one
