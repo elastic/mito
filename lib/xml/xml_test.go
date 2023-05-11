@@ -18,6 +18,7 @@
 package xml
 
 import (
+	"io"
 	"strings"
 	"testing"
 
@@ -241,6 +242,7 @@ var decodeXMLTests = []struct {
 	xsd       string
 	wantCDATA string
 	wantElems map[string]any
+	wantErr   error
 }{
 	0: {
 		doc: `
@@ -494,6 +496,209 @@ var decodeXMLTests = []struct {
 			},
 		},
 	},
+	2: { // Incomplete XML: no proc-inst.
+		doc: `
+<order orderid="56733" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="sales.xsd">
+  <sender>Ástríðr Ragnar</sender>
+  <address>
+    <name>Joord Lennart</name>
+    <company>Sydøstlige Gruppe</company>
+    <address>Beekplantsoen 594, 2 hoog, 6849 IG</address>
+    <city>Boekend</city>
+    <country>Netherlands</country>
+  </address>
+  <item>
+    <name>Egil's Saga</name>
+    <note>Free Sample</note>
+    <number>1</number>
+    <cost>99.95</cost>
+    <sent>FALSE</sent>
+  </item>
+  <item>
+    <name>Auðunar þáttr vestfirska</name>
+    <number>1</number>
+    <cost>9.90</cost>
+    <sent>TRUE</sent>
+  </item>
+</order>
+`,
+		xsd: `
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="order">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="sender" type="xs:string"/>
+        <xs:element name="address">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="company" type="xs:string"/>
+              <xs:element name="address" type="xs:string"/>
+              <xs:element name="city" type="xs:string"/>
+              <xs:element name="country" type="xs:string"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="item" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="note" type="xs:string" minOccurs="0"/>
+              <xs:element name="number" type="xs:positiveInteger"/>
+              <xs:element name="cost" type="xs:decimal"/>
+              <xs:element name="sent" type="xs:boolean"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="orderid" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+`,
+		wantCDATA: "",
+		wantElems: map[string]any{
+			"order": map[string]any{
+				"address": map[string]any{
+					"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+					"city":    "Boekend",
+					"company": "Sydøstlige Gruppe",
+					"country": "Netherlands",
+					"name":    "Joord Lennart",
+				},
+				"item": []any{
+					map[string]any{
+						"cost":   99.95,
+						"name":   "Egil's Saga",
+						"note":   "Free Sample",
+						"number": int64(1),
+						"sent":   false,
+					},
+					map[string]any{
+						"cost":   9.9,
+						"name":   "Auðunar þáttr vestfirska",
+						"number": int64(1),
+						"sent":   true,
+					},
+				},
+				"noNamespaceSchemaLocation": "sales.xsd",
+				"orderid":                   "56733",
+				"sender":                    "Ástríðr Ragnar",
+				"xsi":                       "http://www.w3.org/2001/XMLSchema-instance",
+			},
+		},
+		wantErr: io.ErrUnexpectedEOF,
+	},
+	3: { // Incomplete XML: no root element.
+		doc: `
+<?xml version="1.0" encoding="UTF-8" ?>
+`,
+		xsd: `
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="order">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="sender" type="xs:string"/>
+        <xs:element name="address">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="company" type="xs:string"/>
+              <xs:element name="address" type="xs:string"/>
+              <xs:element name="city" type="xs:string"/>
+              <xs:element name="country" type="xs:string"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="item" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="note" type="xs:string" minOccurs="0"/>
+              <xs:element name="number" type="xs:positiveInteger"/>
+              <xs:element name="cost" type="xs:decimal"/>
+              <xs:element name="sent" type="xs:boolean"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="orderid" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+`,
+		wantCDATA: "",
+		wantElems: map[string]any{},
+		wantErr:   io.ErrUnexpectedEOF,
+	},
+	4: { // Not XML
+		doc: `
+{
+	"order": {
+		"address": {
+			"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+			"city": "Boekend",
+			"company": "Sydøstlige Gruppe",
+			"country": "Netherlands",
+			"name": "Joord Lennart"
+		},
+		"item": [
+			{
+				"cost": 99.95,
+				"name": "Egil's Saga",
+				"note": "Free Sample",
+				"number": 1,
+				"sent": false
+			}
+		],
+		"noNamespaceSchemaLocation": "sales.xsd",
+		"orderid": "56733",
+		"sender": "Ástríðr Ragnar",
+		"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+	}
+}
+`,
+		xsd: `
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="order">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="sender" type="xs:string"/>
+        <xs:element name="address">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="company" type="xs:string"/>
+              <xs:element name="address" type="xs:string"/>
+              <xs:element name="city" type="xs:string"/>
+              <xs:element name="country" type="xs:string"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="item" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="note" type="xs:string" minOccurs="0"/>
+              <xs:element name="number" type="xs:positiveInteger"/>
+              <xs:element name="cost" type="xs:decimal"/>
+              <xs:element name="sent" type="xs:boolean"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="orderid" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+`,
+		wantCDATA: "",
+		wantElems: map[string]any{},
+		wantErr:   io.ErrUnexpectedEOF,
+	},
 }
 
 func TestDecodeXML(t *testing.T) {
@@ -504,8 +709,11 @@ func TestDecodeXML(t *testing.T) {
 				t.Fatalf("failed to get path details: %v", err)
 			}
 			gotCDATA, gotElems, err := Unmarshal(strings.NewReader(test.doc), det)
+			if !sameError(err, test.wantErr) {
+				t.Errorf("unexpected err: got:%v want:%v", err, test.wantErr)
+			}
 			if err != nil {
-				t.Errorf("failed to decode doc: %v", err)
+				return
 			}
 			if gotCDATA != test.wantCDATA {
 				t.Errorf("unexpected CDATA:\ngot: %s\nwant:%s", gotCDATA, test.wantCDATA)
@@ -514,5 +722,16 @@ func TestDecodeXML(t *testing.T) {
 				t.Errorf("unexpected result\n--- want\n+++ got\n%s", cmp.Diff(test.wantElems, gotElems))
 			}
 		})
+	}
+}
+
+func sameError(a, b error) bool {
+	switch {
+	case a == nil && b == nil:
+		return true
+	case a == nil, b == nil:
+		return false
+	default:
+		return a.Error() == b.Error()
 	}
 }

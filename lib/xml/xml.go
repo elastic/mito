@@ -163,10 +163,24 @@ func builtinTypeFor(typ xsd.Type) xsd.Builtin {
 func Unmarshal(r io.Reader, details map[string]Detail) (cdata string, elems map[string]any, err error) {
 	dec := xml.NewDecoder(r)
 	dec.CharsetReader = func(_ string, input io.Reader) (io.Reader, error) { return input, nil }
-	return walkXML(dec, nil, details)
+	var w walker
+	cdata, elems, err = w.walkXML(dec, nil, details)
+	if err == nil && !w.wasValidXML() {
+		err = io.ErrUnexpectedEOF
+	}
+	return cdata, elems, err
 }
 
-func walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]Detail) (cdata string, elems map[string]any, err error) {
+type walker struct {
+	hasDecl bool
+	hasElem bool
+}
+
+func (w *walker) wasValidXML() bool {
+	return w.hasDecl && w.hasElem
+}
+
+func (w *walker) walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]Detail) (cdata string, elems map[string]any, err error) {
 	elems = map[string]any{}
 
 	for {
@@ -179,12 +193,19 @@ func walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]Detail) (cda
 		}
 
 		switch elem := t.(type) {
+		case xml.ProcInst:
+			if w.hasDecl {
+				continue
+			}
+			w.hasDecl = elem.Target == "xml"
+
 		case xml.StartElement:
 			key := elem.Name.Local
 			det := details[key]
+			w.hasElem = true
 
 			var part map[string]any
-			cdata, part, err = walkXML(dec, elem.Attr, det.Children)
+			cdata, part, err = w.walkXML(dec, elem.Attr, det.Children)
 			if err != nil {
 				return "", nil, err
 			}
