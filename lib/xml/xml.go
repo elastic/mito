@@ -163,24 +163,17 @@ func builtinTypeFor(typ xsd.Type) xsd.Builtin {
 func Unmarshal(r io.Reader, details map[string]Detail) (cdata string, elems map[string]any, err error) {
 	dec := xml.NewDecoder(r)
 	dec.CharsetReader = func(_ string, input io.Reader) (io.Reader, error) { return input, nil }
-	var w walker
-	cdata, elems, err = w.walkXML(dec, nil, details)
-	if err == nil && !w.wasValidXML() {
+	cdata, elems, err = walkXML(dec, nil, details)
+	if err == nil && len(elems) == 0 {
+		// If we have no elems, there cannot have been any root element,
+		// so the XML is invalid. We do not check for the required XML
+		// declaration, according to Postel's Law.
 		err = io.ErrUnexpectedEOF
 	}
 	return cdata, elems, err
 }
 
-type walker struct {
-	hasDecl bool
-	hasElem bool
-}
-
-func (w *walker) wasValidXML() bool {
-	return w.hasDecl && w.hasElem
-}
-
-func (w *walker) walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]Detail) (cdata string, elems map[string]any, err error) {
+func walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]Detail) (cdata string, elems map[string]any, err error) {
 	elems = map[string]any{}
 
 	for {
@@ -193,19 +186,12 @@ func (w *walker) walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]
 		}
 
 		switch elem := t.(type) {
-		case xml.ProcInst:
-			if w.hasDecl {
-				continue
-			}
-			w.hasDecl = elem.Target == "xml"
-
 		case xml.StartElement:
 			key := elem.Name.Local
 			det := details[key]
-			w.hasElem = true
 
 			var part map[string]any
-			cdata, part, err = w.walkXML(dec, elem.Attr, det.Children)
+			cdata, part, err = walkXML(dec, elem.Attr, det.Children)
 			if err != nil {
 				return "", nil, err
 			}

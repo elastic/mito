@@ -496,7 +496,7 @@ var decodeXMLTests = []struct {
 			},
 		},
 	},
-	2: { // Incomplete XML: no proc-inst.
+	2: { // Incomplete XML: no proc-inst; allowed.
 		doc: `
 <order orderid="56733" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="sales.xsd">
   <sender>Ástríðr Ragnar</sender>
@@ -588,7 +588,6 @@ var decodeXMLTests = []struct {
 				"xsi":                       "http://www.w3.org/2001/XMLSchema-instance",
 			},
 		},
-		wantErr: io.ErrUnexpectedEOF,
 	},
 	3: { // Incomplete XML: no root element.
 		doc: `
