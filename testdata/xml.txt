@@ -14,7 +14,11 @@ xsd:
 	"multi_element": file('order_two.xml').as(f, {
 		"with_xsd": f.decode_xml("order"),
 		"without_xsd": f.decode_xml(),
-	})
+	}),
+	"invalid_xml": file('order.json').as(f, {
+		"with_xsd": try(f.decode_xml("order")),
+		"without_xsd": try(f.decode_xml()),
+	}),
 }
 -- order.xsd --
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -94,8 +98,37 @@ xsd:
     <sent>TRUE</sent>
   </item>
 </order>
+-- order.json --
+{
+	"order": {
+		"address": {
+			"address": "Beekplantsoen 594, 2 hoog, 6849 IG",
+			"city": "Boekend",
+			"company": "Sydøstlige Gruppe",
+			"country": "Netherlands",
+			"name": "Joord Lennart"
+		},
+		"item": [
+			{
+				"cost": 99.95,
+				"name": "Egil's Saga",
+				"note": "Free Sample",
+				"number": 1,
+				"sent": false
+			}
+		],
+		"noNamespaceSchemaLocation": "sales.xsd",
+		"orderid": "56733",
+		"sender": "Ástríðr Ragnar",
+		"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+	}
+}
 -- want.txt --
 {
+	"invalid_xml": {
+		"with_xsd": "failed to unmarshal XML document: unexpected EOF",
+		"without_xsd": "failed to unmarshal XML document: unexpected EOF"
+	},
 	"multi_element": {
 		"with_xsd": {
 			"doc": {

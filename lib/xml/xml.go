@@ -163,7 +163,14 @@ func builtinTypeFor(typ xsd.Type) xsd.Builtin {
 func Unmarshal(r io.Reader, details map[string]Detail) (cdata string, elems map[string]any, err error) {
 	dec := xml.NewDecoder(r)
 	dec.CharsetReader = func(_ string, input io.Reader) (io.Reader, error) { return input, nil }
-	return walkXML(dec, nil, details)
+	cdata, elems, err = walkXML(dec, nil, details)
+	if err == nil && len(elems) == 0 {
+		// If we have no elems, there cannot have been any root element,
+		// so the XML is invalid. We do not check for the required XML
+		// declaration, according to Postel's Law.
+		err = io.ErrUnexpectedEOF
+	}
+	return cdata, elems, err
 }
 
 func walkXML(dec *xml.Decoder, attrs []xml.Attr, details map[string]Detail) (cdata string, elems map[string]any, err error) {
