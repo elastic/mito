@@ -19,6 +19,7 @@ package lib
 
 import (
 	"crypto/hmac"
+	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
@@ -75,6 +76,20 @@ import (
 // Examples:
 //
 //	"hello world".hex()  // return "68656c6c6f20776f726c64"
+//
+// # MD5
+//
+// Returns a bytes of the md5 hash of a string or bytes:
+//
+//	md5(<bytes>) -> <bytes>
+//	md5(<string>) -> <bytes>
+//	<bytes>.md5() -> <bytes>
+//	<string>.md5() -> <bytes>
+//
+// Examples:
+//
+//	"hello world".md5()       // return "XrY7u+Ae7tCTyyK7j1rNww=="
+//	"hello world".md5().hex() // return "5eb63bbbe01eeed093cb22bb8f5acdc3"
 //
 // # SHA-1
 //
@@ -202,6 +217,28 @@ func (cryptoLib) CompileOptions() []cel.EnvOption {
 					"string_hex",
 					[]*expr.Type{decls.String},
 					decls.String,
+				),
+			),
+			decls.NewFunction("md5",
+				decls.NewOverload(
+					"md5_bytes",
+					[]*expr.Type{decls.Bytes},
+					decls.Bytes,
+				),
+				decls.NewInstanceOverload(
+					"bytes_md5",
+					[]*expr.Type{decls.Bytes},
+					decls.Bytes,
+				),
+				decls.NewOverload(
+					"md5_string",
+					[]*expr.Type{decls.String},
+					decls.Bytes,
+				),
+				decls.NewInstanceOverload(
+					"string_md5",
+					[]*expr.Type{decls.String},
+					decls.Bytes,
 				),
 			),
 			decls.NewFunction("sha1",
@@ -339,6 +376,24 @@ func (cryptoLib) ProgramOptions() []cel.ProgramOption {
 		),
 		cel.Functions(
 			&functions.Overload{
+				Operator: "md5_bytes",
+				Unary:    md5Hash,
+			},
+			&functions.Overload{
+				Operator: "bytes_md5",
+				Unary:    md5Hash,
+			},
+			&functions.Overload{
+				Operator: "md5_string",
+				Unary:    md5Hash,
+			},
+			&functions.Overload{
+				Operator: "string_md5",
+				Unary:    md5Hash,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
 				Operator: "sha1_bytes",
 				Unary:    sha1Hash,
 			},
@@ -430,6 +485,21 @@ func hexEncode(val ref.Val) ref.Val {
 		return types.String(hex.EncodeToString([]byte(val)))
 	default:
 		return types.NewErr("invalid type for hex: %s", val.Type())
+	}
+}
+
+func md5Hash(val ref.Val) ref.Val {
+	switch val := val.(type) {
+	case types.Bytes:
+		h := md5.New()
+		h.Write(val)
+		return types.Bytes(h.Sum(nil))
+	case types.String:
+		h := md5.New()
+		h.Write([]byte(val))
+		return types.Bytes(h.Sum(nil))
+	default:
+		return types.NewErr("invalid type for md5: %s", val.Type())
 	}
 }
 
