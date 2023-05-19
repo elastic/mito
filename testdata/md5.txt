@@ -1,0 +1,26 @@
+mito -use crypto src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	b"hello world".md5(),
+	b"hello world".md5().hex(),
+	md5(b"hello world"),
+	md5(b"hello world").hex(),
+	"hello world".md5(),
+	"hello world".md5().hex(),
+	md5("hello world"),
+	md5("hello world").hex(),
+]
+-- want.txt --
+[
+	"XrY7u+Ae7tCTyyK7j1rNww==",
+	"5eb63bbbe01eeed093cb22bb8f5acdc3",
+	"XrY7u+Ae7tCTyyK7j1rNww==",
+	"5eb63bbbe01eeed093cb22bb8f5acdc3",
+	"XrY7u+Ae7tCTyyK7j1rNww==",
+	"5eb63bbbe01eeed093cb22bb8f5acdc3",
+	"XrY7u+Ae7tCTyyK7j1rNww==",
+	"5eb63bbbe01eeed093cb22bb8f5acdc3"
+]
