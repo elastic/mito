@@ -20,12 +20,19 @@ package lib
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/google/cel-go/cel"
@@ -1139,4 +1146,336 @@ func formatQuery(arg ref.Val) ref.Val {
 	default:
 		return types.NewErr("invalid type for format_url: %T", q)
 	}
+}
+
+type digestResponse struct {
+	response     string
+	username     string
+	usernameStar string
+	realm        string
+	domain       string
+	uri          string
+	qop          string
+	nonce        string
+	cnonce       string
+	nc           int
+	opaque       string
+	algorithm    string
+	userhash     bool
+}
+
+// newDigestResponse returns a new Digest Authentication response for the
+// server response, given username, password, client nonce, request body
+// and nonce use count for the client nonce.
+func newDigestResponse(resp *http.Response, username, password, cnonce, body string, nc int) (*digestResponse, error) {
+	if resp.StatusCode != http.StatusUnauthorized {
+		return nil, fmt.Errorf("not a digest authentication server request: %s", resp.Status)
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	for _, h := range resp.Header[http.CanonicalHeaderKey("WWW-Authenticate")] {
+		c, err := parseDigestChallenge(h)
+		if err != nil {
+			return nil, err
+		}
+		r := digestResponse{
+			username:  username,
+			realm:     c.realm,
+			domain:    c.domain,
+			uri:       resp.Request.RequestURI,
+			qop:       c.qop,
+			nonce:     c.nonce,
+			cnonce:    cnonce,
+			nc:        nc + 1, // Advance our nonce count.
+			opaque:    c.opaque,
+			algorithm: c.algorithm,
+			userhash:  c.userhash,
+		}
+
+		err = r.hash(c, password, resp.Request.Method, body)
+		if err != nil {
+			return nil, err
+		}
+		return &r, nil
+	}
+	return nil, errors.New("no WWW-Authenticate header")
+}
+
+func (r *digestResponse) hash(c *digestChallenge, password, method, body string) error {
+	var h hash.Hash
+	algorithm := strings.ToLower(r.algorithm)
+	algorithm, _, sess := strings.Cut(algorithm, "_sess")
+	switch algorithm {
+	case "", "md5":
+		h = md5.New()
+	case "sha-256":
+		h = sha256.New()
+	case "sha-512-256":
+		h = sha512_256{sha512.New()}
+	}
+	fmt.Fprintf(h, "%s:%s:%s", r.username, r.realm, password)
+	ha1 := hex.EncodeToString(h.Sum(nil))
+	h.Reset()
+	if sess {
+		fmt.Fprintf(h, "%s:%s:%s", ha1, c.nonce, r.cnonce)
+		ha1 = hex.EncodeToString(h.Sum(nil))
+		h.Reset()
+	}
+	var ha2 string
+	auth, authInt := qopTypes(r.qop)
+	switch {
+	case body != "" && authInt:
+		r.qop = "auth-int"
+		fmt.Fprint(h, body)
+		hBody := hex.EncodeToString(h.Sum(nil))
+		h.Reset()
+		fmt.Fprintf(h, "%s:%s:%s", method, r.uri, hBody)
+		ha2 = hex.EncodeToString(h.Sum(nil))
+		h.Reset()
+	case auth:
+		r.qop = "auth"
+		fmt.Fprint(h, method+":"+r.uri)
+		ha2 = hex.EncodeToString(h.Sum(nil))
+		h.Reset()
+	case !auth && !authInt:
+		// Backward compatibility no-op.
+	default:
+		return fmt.Errorf("no accepted qop from %q", r.qop)
+	}
+	fmt.Fprintf(h, "%s:%s:%08x:%s:%s:%s", ha1, r.nonce, r.nc, r.cnonce, r.qop, ha2)
+	r.response = hex.EncodeToString(h.Sum(nil))
+	if r.userhash {
+		h.Reset()
+		fmt.Fprint(h, r.username+":"+r.realm)
+		r.username = hex.EncodeToString(h.Sum(nil))
+	} else {
+		username, encoded := percentEncode(r.username, c.charset)
+		if encoded {
+			r.username = ""
+			r.usernameStar = username
+		}
+	}
+	return nil
+}
+
+// sha512_256 implements the SHA-512-256 hashing used in RFC7616 which
+// differs from the Sum512/256 digest implemented in crypto/sha512.
+type sha512_256 struct {
+	hash.Hash
+}
+
+func (h sha512_256) Sum(b []byte) []byte {
+	b = h.Hash.Sum(b)
+	return b[:sha512.Size256]
+}
+
+// qopTypes returns the qop options in qop.
+func qopTypes(qop string) (auth, authInt bool) {
+	for _, q := range strings.Split(qop, ",") {
+		switch strings.TrimSpace(q) {
+		case "auth":
+			auth = true
+		case "auth-int":
+			authInt = true
+		}
+	}
+	return auth, authInt
+}
+
+// percentEncode encodes strings according to RFC2045 and RFC2231 for the MIME ABNF
+// for parameters.
+func percentEncode(s, charset string) (string, bool) {
+	needEncoding := false
+	for _, b := range []byte(s) {
+		if needsPercentEncoding[b] {
+			needEncoding = true
+		}
+	}
+	if !needEncoding {
+		return s, false
+	}
+	var buf strings.Builder
+	buf.WriteString(charset)
+	buf.WriteString("''")
+	for _, b := range []byte(s) {
+		if needsPercentEncoding[b] {
+			fmt.Fprintf(&buf, "%%%2X", b)
+			continue
+		}
+		buf.WriteByte(b)
+	}
+	return buf.String(), true
+}
+
+// needsPercentEncoding is the set of characters that need percent-encoding
+// for RFC2045 and RFC2231.
+var needsPercentEncoding = [256]bool{
+	' ': true, '*': true, '\'': true, '%': true, '(': true, ')': true, '<': true, '>': true,
+	'@': true, ',': true, ';': true, ':': true, '\\': true, '"': true, '/': true, '[': true,
+	']': true, '?': true, '=': true,
+}
+
+func init() {
+	for i := 0; i < '!'; i++ {
+		needsPercentEncoding[i] = true
+	}
+	for i := 128; i < 256; i++ {
+		needsPercentEncoding[i] = true
+	}
+}
+
+func (r *digestResponse) String() string {
+	var buf strings.Builder
+	buf.WriteString("Digest")
+	fmt.Fprintf(&buf, " response=%q,opaque=%q", r.response, r.opaque)
+	if r.algorithm != "" {
+		fmt.Fprintf(&buf, ",algorithm=%s", r.algorithm)
+	}
+	if r.username != "" {
+		fmt.Fprintf(&buf, ",username=%q", r.username)
+	}
+	if r.usernameStar != "" {
+		fmt.Fprintf(&buf, ",username*=%s", r.usernameStar)
+	}
+	if r.realm != "" {
+		fmt.Fprintf(&buf, ",realm=%q", r.realm)
+	}
+	if r.domain != "" {
+		fmt.Fprintf(&buf, ",domain=%q", r.domain)
+	}
+	if r.uri != "" {
+		fmt.Fprintf(&buf, ",uri=%q", r.uri)
+	}
+	if r.nonce != "" {
+		fmt.Fprintf(&buf, ",nonce=%q", r.nonce)
+	}
+	// RFC2617 and RFC7616 appear to disagree with how to handle
+	// qop, cnonce and nc. Use the more relaxed case with the
+	// expectation that the server will reject this if it's wrong.
+	if r.qop != "" {
+		fmt.Fprintf(&buf, ",qop=%s", r.qop)
+		fmt.Fprintf(&buf, ",cnonce=%q", r.cnonce)
+		fmt.Fprintf(&buf, ",nc=%08x", r.nc)
+	}
+	if r.userhash {
+		fmt.Fprintf(&buf, ",userhash=%t", r.userhash)
+	}
+	return buf.String()
+}
+
+type digestChallenge struct {
+	realm     string
+	domain    string
+	nonce     string
+	opaque    string
+	stale     bool
+	algorithm string
+	qop       string
+	charset   string
+	userhash  bool
+}
+
+func parseDigestChallenge(s string) (*digestChallenge, error) {
+	_, c, ok := strings.Cut(s, "Digest ")
+	if !ok {
+		return nil, fmt.Errorf("%s is not a valid digest authentication challenge: no prefix", s)
+	}
+	c = strings.TrimSpace(c)
+	var (
+		dac digestChallenge
+		err error
+
+		n int
+	)
+	for len(c) != 0 {
+		key, left, ok := strings.Cut(c, "=")
+		if !ok {
+			return nil, fmt.Errorf("%s is not a valid digest authentication challenge: no assignment", s)
+		}
+		switch key {
+		case "realm":
+			dac.realm, c, err = unq(left)
+		case "domain":
+			dac.domain, c, err = unq(left)
+		case "nonce":
+			dac.nonce, c, err = unq(left)
+		case "opaque":
+			dac.opaque, c, err = unq(left)
+		case "stale":
+			dac.stale = matchTrue(left)
+			_, c, ok = strings.Cut(left, ",")
+			if !ok && c != "" {
+				return nil, fmt.Errorf("unable to parse unknown field in %s", c)
+			}
+		case "algorithm":
+			dac.algorithm = findAlgo(left)
+			if dac.algorithm != "" {
+				c, err = advance(left, strings.TrimPrefix(left, dac.algorithm))
+			}
+		case "qop":
+			dac.qop, c, err = unq(left)
+		case "charset":
+			dac.charset = findCharset(left)
+			if dac.charset == "" {
+				return nil, fmt.Errorf("%s is not a valid digest authentication challenge: invalid charset", s)
+			}
+			c, err = advance(left, strings.TrimPrefix(left, dac.charset))
+		case "userhash":
+			userhash := findBool(left)
+			if userhash == "" {
+				return nil, fmt.Errorf("%s is not a valid digest authentication challenge: invalid userhash", s)
+			}
+			dac.userhash = matchTrue(left)
+			c, err = advance(left, strings.TrimPrefix(left, userhash))
+		default:
+			// Ignore unknown directives.
+			left = strings.TrimSpace(left)
+			if left == "" {
+				break
+			}
+			_, c, ok = strings.Cut(left, ",")
+			if !ok && c != "" {
+				return nil, fmt.Errorf("unable to parse unknown field in %s", c)
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		n++
+	}
+	if n == 0 || dac.realm == "" || dac.nonce == "" {
+		return nil, fmt.Errorf("%s is not a valid digest authentication challenge", s)
+	}
+	return &dac, nil
+}
+
+var (
+	matchTrue   = regexp.MustCompile(`^\s*\b(?i:true)\b`).MatchString
+	findBool    = regexp.MustCompile(`^\s*\b(?i:true|false)\b`).FindString
+	findAlgo    = regexp.MustCompile(`^\s*\b((?:MD5|SHA-256|SHA-512-256)(?:-sess)?)\b`).FindString
+	findCharset = regexp.MustCompile(`^\s*\b(?:UTF-8)\b`).FindString
+)
+
+func unq(s string) (val, left string, err error) {
+	s = strings.TrimSpace(s)
+	if len(s) < 2 || !strings.HasPrefix(s, `"`) {
+		return "", s, fmt.Errorf("%s is not a quoted string", s)
+	}
+	val, left, ok := strings.Cut(s[1:], `"`)
+	if !ok {
+		return "", s, fmt.Errorf("%s is not a quoted string", s)
+	}
+	left, err = advance(s, left)
+	return val, left, err
+}
+
+func advance(orig, left string) (string, error) {
+	left = strings.TrimSpace(left)
+	if left == "" {
+		return "", nil
+	}
+	if !strings.HasPrefix(left, ",") {
+		return orig, fmt.Errorf("unexpected remainder in %q: %q", orig, left)
+	}
+	return strings.TrimSpace(left[1:]), nil
 }

@@ -20,6 +20,7 @@ package lib
 import (
 	"crypto/hmac"
 	"crypto/md5"
+	"crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
@@ -133,6 +134,16 @@ import (
 //
 //	"hello world".hmac("sha256", b"key")        // return "C6BvH5pjAEYeQ0VFNdw8QiPkex01cHPXU26ukOwJW+E="
 //	"hello world".hmac("sha256", b"key").hex()  // return "0ba06f1f9a6300461e43454535dc3c4223e47b1d357073d7536eae90ec095be1"
+//
+// # Random
+//
+// Returns a string of a random bytes based on the the Go crypto/rand source:
+//
+//	random(<int>) -> <bytes>
+//
+// Examples:
+//
+//	random(10)  // return b"<random sequence of 10 bytes>"
 //
 // # UUID
 //
@@ -307,6 +318,13 @@ func (cryptoLib) CompileOptions() []cel.EnvOption {
 					decls.Bytes,
 				),
 			),
+			decls.NewFunction("random",
+				decls.NewOverload(
+					"random_int",
+					[]*expr.Type{decls.Int},
+					decls.Bytes,
+				),
+			),
 			decls.NewFunction("uuid",
 				decls.NewOverload(
 					"uuid_string",
@@ -448,6 +466,12 @@ func (cryptoLib) ProgramOptions() []cel.ProgramOption {
 		),
 		cel.Functions(
 			&functions.Overload{
+				Operator: "random_int",
+				Unary:    random,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
 				Operator: "uuid_string",
 				Function: uuidString,
 			},
@@ -567,7 +591,20 @@ func hmacHash(args ...ref.Val) ref.Val {
 	return types.Bytes(mac.Sum(nil))
 }
 
-func uuidString(args ...ref.Val) ref.Val {
+func random(arg ref.Val) ref.Val {
+	want, ok := arg.(types.Int)
+	if !ok {
+		return types.ValOrErr(want, "no such overload for random: %s", arg.Type())
+	}
+	b := make([]byte, want)
+	n, err := rand.Read(b)
+	if err != nil {
+		return types.NewErr("random: %v", err)
+	}
+	return types.Bytes(b[:n])
+}
+
+func uuidString(_ ...ref.Val) ref.Val {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return types.NewErr("failed to create uuid: %v", err)
