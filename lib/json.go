@@ -20,15 +20,20 @@ package lib
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"reflect"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // JSON returns a cel.EnvOption to configure extended functions for JSON
@@ -213,10 +218,34 @@ func encodeJSON(val ref.Val) ref.Val {
 		return types.NewErr("failed to get native value for JSON")
 	}
 	b, err := json.Marshal(v)
-	if err != nil {
+	errType := &json.UnsupportedTypeError{}
+	switch {
+	case err == nil:
+		return types.String(b)
+	case errors.As(err, &errType):
+		// We could not marshal over ref.Val most likely, so convert
+		// to protobuf as an intermediate and retry.
+		v, err := val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
+		if err != nil {
+			return types.NewErr("failed proto conversion: %v", err)
+		}
+		b, err := protojson.MarshalOptions{}.Marshal(v.(proto.Message))
+		if err != nil {
+			return types.NewErr("failed native conversion: %v", err)
+		}
+		var res interface{}
+		err = json.Unmarshal(b, &res)
+		if err != nil {
+			return types.NewErr("failed json conversion: %v", err)
+		}
+		b, err = json.Marshal(res)
+		if err != nil {
+			return types.NewErr("failed to marshal value to JSON: %v", err)
+		}
+		return types.String(b)
+	default:
 		return types.NewErr("failed to marshal value to JSON: %v", err)
 	}
-	return types.String(b)
 }
 
 func (l jsonLib) decodeJSON(val ref.Val) ref.Val {
