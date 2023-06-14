@@ -25,6 +25,7 @@ package mito
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -66,6 +67,7 @@ func Main() int {
 	use := flag.String("use", "all", "libraries to use")
 	data := flag.String("data", "", "path to a JSON object holding input (exposed as the label "+root+")")
 	cfgPath := flag.String("cfg", "", "path to a YAML file holding configuration for global vars and regular expressions")
+	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
 	flag.Parse()
 	if len(flag.Args()) != 1 {
 		flag.Usage()
@@ -125,16 +127,19 @@ func Main() int {
 				fmt.Fprintln(os.Stderr, "configured basic authentication and OAuth2")
 				return 2
 			case auth.Basic != nil:
-				libMap["http"] = lib.HTTP(nil, nil, auth.Basic)
+				libMap["http"] = lib.HTTP(setClientInsecure(nil, *insecure), nil, auth.Basic)
 			case auth.OAuth2 != nil:
 				client, err := oAuth2Client(*auth.OAuth2)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return 2
 				}
-				libMap["http"] = lib.HTTP(client, nil, nil)
+				libMap["http"] = lib.HTTP(setClientInsecure(client, *insecure), nil, nil)
 			}
 		}
+	}
+	if libMap["http"] == nil {
+		libMap["http"] = lib.HTTP(setClientInsecure(nil, *insecure), nil, nil)
 	}
 	if *use == "all" {
 		for _, l := range libMap {
@@ -180,6 +185,28 @@ func Main() int {
 	return 0
 }
 
+// setClientInsecure returns an http.Client that will skip TLS certificate
+// verification when insecure is true. If c is nil and insecure is true
+// http.DefaultClient and http.DefaultTransport are used and will be mutated.
+func setClientInsecure(c *http.Client, insecure bool) *http.Client {
+	if !insecure {
+		return c
+	}
+	if c == nil {
+		c = http.DefaultClient
+	}
+	if c.Transport == nil {
+		c.Transport = http.DefaultTransport
+	}
+	t, ok := c.Transport.(*http.Transport)
+	if !ok {
+		return c
+	}
+	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: insecure}
+	c.Transport = t
+	return c
+}
+
 var (
 	libMap = map[string]cel.EnvOption{
 		"collections": lib.Collections(),
@@ -189,7 +216,7 @@ var (
 		"try":         lib.Try(),
 		"file":        lib.File(mimetypes),
 		"mime":        lib.MIME(mimetypes),
-		"http":        lib.HTTP(nil, nil, nil),
+		"http":        nil, // This will be populated by Main.
 		"limit":       lib.Limit(limitPolicies),
 		"strings":     lib.Strings(),
 	}

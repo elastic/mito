@@ -1,0 +1,18 @@
+serve_tls hello.text
+expand src_var.cel src.cel
+cmpenv src.cel src_var.cel 
+
+! mito -use http src.cel
+! stdout .
+stderr 'failed eval: Get "https://127.0.0.1:[0-9]{1,5}": x509: certificate signed by unknown authority'
+
+mito -use http -insecure src.cel
+cmp stdout want_insecure.txt
+
+-- hello.text --
+hello
+-- src_var.cel --
+// $URL is set by the serve command and ${URL} is expanded by the expand command.
+string(request("GET", "${URL}").do_request().Body)
+-- want_insecure.txt --
+"hello\n"
