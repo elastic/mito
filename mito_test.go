@@ -51,9 +51,10 @@ func TestScripts(t *testing.T) {
 		Dir:           filepath.Join("testdata"),
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"base64": bas64decode,
-			"serve":  serve,
-			"expand": expand,
+			"base64":    bas64decode,
+			"serve":     serve,
+			"serve_tls": serveTLS,
+			"expand":    expand,
 		},
 	}
 	testscript.Run(t, p)
@@ -75,24 +76,28 @@ func bas64decode(ts *testscript.TestScript, neg bool, args []string) {
 }
 
 func serve(ts *testscript.TestScript, neg bool, args []string) {
+	server(ts, neg, "serve", httptest.NewServer, args)
+}
+
+func serveTLS(ts *testscript.TestScript, neg bool, args []string) {
+	server(ts, neg, "serve_tls", httptest.NewTLSServer, args)
+}
+
+func server(ts *testscript.TestScript, neg bool, name string, newServer func(handler http.Handler) *httptest.Server, args []string) {
 	if neg {
-		ts.Fatalf("unsupported: ! serve")
+		ts.Fatalf("unsupported: ! %s", name)
 	}
 	if len(args) != 1 && len(args) != 3 {
-		ts.Fatalf("usage: serve body [user password]")
+		ts.Fatalf("usage: %s body [user password]", name)
 	}
-	var (
-		srv *httptest.Server
-
-		user, pass string
-	)
+	var user, pass string
 	body, err := os.ReadFile(ts.MkAbs(args[0]))
 	ts.Check(err)
 	if len(args) == 3 {
 		user = args[1]
 		pass = args[2]
 	}
-	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv := newServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		u, p, _ := req.BasicAuth()
 		// Obvious security anti-patterns are obvious; for testing.
 		if user != "" && user != u {
