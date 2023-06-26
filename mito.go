@@ -238,24 +238,35 @@ var (
 )
 
 func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, error) {
+	prg, err := compile(src, root, libs...)
+	if err != nil {
+		return "", fmt.Errorf("failed program instantiation: %v", err)
+	}
+	return run(prg, false, input)
+}
+
+func compile(src, root string, libs ...cel.EnvOption) (cel.Program, error) {
 	opts := append([]cel.EnvOption{
 		cel.Declarations(decls.NewVar(root, decls.Dyn)),
 	}, libs...)
 	env, err := cel.NewEnv(opts...)
 	if err != nil {
-		return "", fmt.Errorf("failed to create env: %v", err)
+		return nil, fmt.Errorf("failed to create env: %v", err)
 	}
 
 	ast, iss := env.Compile(src)
 	if iss.Err() != nil {
-		return "", fmt.Errorf("failed compilation: %v", iss.Err())
+		return nil, fmt.Errorf("failed compilation: %v", iss.Err())
 	}
 
 	prg, err := env.Program(ast)
 	if err != nil {
-		return "", fmt.Errorf("failed program instantiation: %v", err)
+		return nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
+	return prg, nil
+}
 
+func run(prg cel.Program, fast bool, input interface{}) (string, error) {
 	if input == nil {
 		input = interpreter.EmptyActivation()
 	}
@@ -268,9 +279,12 @@ func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, e
 	if err != nil {
 		return "", fmt.Errorf("failed proto conversion: %v", err)
 	}
-	b, err := protojson.MarshalOptions{Indent: "\t"}.Marshal(v.(proto.Message))
+	b, err := protojson.MarshalOptions{}.Marshal(v.(proto.Message))
 	if err != nil {
 		return "", fmt.Errorf("failed native conversion: %v", err)
+	}
+	if fast {
+		return string(b), nil
 	}
 	var res interface{}
 	err = json.Unmarshal(b, &res)
