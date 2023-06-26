@@ -279,23 +279,18 @@ func run(prg cel.Program, fast bool, input interface{}) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed proto conversion: %v", err)
 	}
-	b, err := protojson.MarshalOptions{}.Marshal(v.(proto.Message))
-	if err != nil {
-		return "", fmt.Errorf("failed native conversion: %v", err)
-	}
 	if fast {
+		b, err := protojson.MarshalOptions{}.Marshal(v.(proto.Message))
+		if err != nil {
+			return "", fmt.Errorf("failed native conversion: %v", err)
+		}
 		return string(b), nil
-	}
-	var res interface{}
-	err = json.Unmarshal(b, &res)
-	if err != nil {
-		return "", fmt.Errorf("failed json conversion: %v", err)
 	}
 	var buf strings.Builder
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "\t")
-	err = enc.Encode(res)
+	err = enc.Encode(v.(*structpb.Value).AsInterface())
 	return strings.TrimRight(buf.String(), "\n"), err
 }
 
