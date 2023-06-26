@@ -60,7 +60,7 @@ var (
 
 	// Linear search for proto.Message mappings and others.
 	protobufTypes = []reflect.Type{
-		reflect.TypeOf((*structpb.Value)(nil)),
+		structpbValueType,
 		reflect.TypeOf((*structpb.ListValue)(nil)),
 		reflect.TypeOf((*structpb.Struct)(nil)),
 		// Catch all.
@@ -78,4 +78,6 @@ var (
 	reflectMapStringStringSliceType = reflect.TypeOf(map[string][]string(nil))
 	reflectStringType               = reflect.TypeOf("")
 	reflectStringSliceType          = reflect.TypeOf([]string(nil))
+
+	structpbValueType = reflect.TypeOf((*structpb.Value)(nil))
 )
