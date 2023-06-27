@@ -20,11 +20,15 @@ cmp stdout want.txt
 			}
 		}
 	}),
+	"plain text".encode_json(),
+	encode_json("plain text"),
 ]
 -- want.txt --
 [
 	"{\"a\":1,\"b\":[1,2,3]}",
 	"{\"a\":1,\"b\":[1,2,3]}",
 	"{\"a\":{\"b\":{\"c\":1}}}",
-	"{\"a\":{\"b\":{\"c\":1}}}"
+	"{\"a\":{\"b\":{\"c\":1}}}",
+	"\"plain text\"",
+	"\"plain text\""
 ]

@@ -20,6 +20,7 @@ package lib
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -188,11 +189,41 @@ func (l jsonLib) ProgramOptions() []cel.ProgramOption {
 }
 
 func encodeJSON(val ref.Val) ref.Val {
-	v, err := val.ConvertToNative(structpbValueType)
-	if err != nil {
-		return types.NewErr("failed proto conversion: %v", err)
+	var v interface{}
+	// Avoid type conversions if possible.
+	switch under := val.Value().(type) {
+	case map[string]any:
+		v = under
+	case map[ref.Val]ref.Val:
+		pb, err := val.ConvertToNative(structpbValueType)
+		if err != nil {
+			return types.NewErr("failed proto conversion: %v", err)
+		}
+		v = pb.(*structpb.Value).AsInterface()
+	default:
+		var err error
+		typ, ok := encodableTypes[val.Type()]
+		if ok {
+			v, err = val.ConvertToNative(typ)
+			if err != nil {
+				// This should never happen.
+				panic(fmt.Sprintf("json encode mapping out of sync: %v", err))
+			}
+		} else {
+			for _, typ := range protobufTypes {
+				v, err = val.ConvertToNative(typ)
+				if err != nil {
+					v = nil
+				} else {
+					break
+				}
+			}
+		}
+		if v == nil {
+			return types.NewErr("failed to get native value for JSON")
+		}
 	}
-	b, err := json.Marshal(v.(*structpb.Value).AsInterface())
+	b, err := json.Marshal(v)
 	if err != nil {
 		return types.NewErr("failed to marshal value to JSON: %v", err)
 	}
