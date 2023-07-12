@@ -222,6 +222,19 @@ import (
 // Examples:
 //
 //	{"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":1, "b":2, "c":3}
+//
+// # Zip
+//
+// Returns a map keyed on elements of a list with values from another equally
+// sized list:
+//
+//	zip(<list<K>>, <list<V>>) -> <map<K,V>>
+//	<list<K>>.zip(<list<V>>) -> <map<K,V>>
+//
+// Examples:
+//
+//	zip(["a", "b"], [1, 2])  // return {"a":1, "b":2}
+//	["a", "b"].zip([1, 2])   // return {"a":1, "b":2}
 func Collections() cel.EnvOption {
 	return cel.Lib(collectionsLib{})
 }
@@ -351,6 +364,20 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 					[]string{"K", "V"},
 				),
 			),
+			decls.NewFunction("zip",
+				decls.NewParameterizedInstanceOverload(
+					"list_zip",
+					[]*expr.Type{listK, listV},
+					mapKV,
+					[]string{"K", "V"},
+				),
+				decls.NewParameterizedOverload(
+					"zip_list",
+					[]*expr.Type{listK, listV},
+					mapKV,
+					[]string{"K", "V"},
+				),
+			),
 		),
 	}
 }
@@ -441,6 +468,16 @@ func (collectionsLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "map_with_replace_map",
 				Binary:   withReplace,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "zip_list",
+				Binary:   zipLists,
+			},
+			&functions.Overload{
+				Operator: "list_zip",
+				Binary:   zipLists,
 			},
 		),
 	}
@@ -889,6 +926,26 @@ func compare(arg ref.Val, cmp types.Int) ref.Val {
 		}
 	}
 	return min
+}
+
+func zipLists(arg0, arg1 ref.Val) ref.Val {
+	keys, ok := arg0.(traits.Lister)
+	if !ok {
+		return types.NoSuchOverloadErr()
+	}
+	vals, ok := arg1.(traits.Lister)
+	if !ok {
+		return types.NoSuchOverloadErr()
+	}
+	if keys.Size() != vals.Size() {
+		return types.NewErr("zip: size(keys) != size(vals): %d != %d", keys.Size(), vals.Size())
+	}
+	n, _ := keys.Size().(types.Int)
+	m := make(map[ref.Val]ref.Val, n)
+	for i := types.Int(0); i < n; i++ {
+		m[keys.Get(i)] = vals.Get(i)
+	}
+	return types.NewRefValMap(types.DefaultTypeAdapter, m)
 }
 
 func makeAs(eh parser.ExprHelper, target *expr.Expr, args []*expr.Expr) (*expr.Expr, *common.Error) {
