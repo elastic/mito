@@ -1,0 +1,24 @@
+mito -use collections,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{
+	"good_instance": ["a", "b"].zip([1, 2]),
+	"good_function": zip(["a", "b"], [1, 2]),
+	"bad_instance": try(["a", "b"].zip([1, 2, 3])),
+	"bad_function": try(zip(["a", "b"], [1, 2, 3])),
+}
+-- want.txt --
+{
+	"bad_function": "zip: size(keys) != size(vals): 2 != 3",
+	"bad_instance": "zip: size(keys) != size(vals): 2 != 3",
+	"good_function": {
+		"a": 1,
+		"b": 2
+	},
+	"good_instance": {
+		"a": 1,
+		"b": 2
+	}
+}
