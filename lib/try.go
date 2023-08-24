@@ -36,9 +36,9 @@ import (
 // try returns either passes a value through unaltered if it is valid and
 // not an error, or it returns a string or object describing the error:
 //
-//	try(<error>) -> <map<string,sting>>
+//	try(<error>) -> <map<string,string>>
 //	try(<dyn>) -> <dyn>
-//	try(<error>, <string>) -> <map<string,sting>>
+//	try(<error>, <string>) -> <map<string,string>>
 //	try(<dyn>, <string>) -> <dyn>
 //
 // Examples:
