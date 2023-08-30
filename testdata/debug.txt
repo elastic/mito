@@ -1,0 +1,17 @@
+mito -use debug,try src.cel
+cmp stdout want.txt
+cmp stderr want_log.txt
+
+-- src.cel --
+[
+	1+debug("partial sum", 2+3),
+	try(debug("divide by zero", 0/0)),
+]
+-- want.txt --
+[
+	6,
+	"division by zero"
+]
+-- want_log.txt --
+DEBUG: logging "partial sum": 5
+ERROR: logging "divide by zero": division by zero

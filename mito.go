@@ -214,6 +214,7 @@ var (
 		"json":        lib.JSON(nil),
 		"time":        lib.Time(),
 		"try":         lib.Try(),
+		"debug":       lib.Debug(debug),
 		"file":        lib.File(mimetypes),
 		"mime":        lib.MIME(mimetypes),
 		"http":        nil, // This will be populated by Main.
@@ -236,6 +237,14 @@ var (
 		"draft": lib.DraftRateLimit,
 	}
 )
+
+func debug(tag string, value any) {
+	level := "DEBUG"
+	if _, ok := value.(error); ok {
+		level = "ERROR"
+	}
+	fmt.Fprintf(os.Stderr, "%s: logging %q: %v\n", level, tag, value)
+}
 
 func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, error) {
 	prg, err := compile(src, root, libs...)
