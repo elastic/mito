@@ -176,12 +176,29 @@ func Main() int {
 		input = map[string]interface{}{root: input}
 	}
 
-	res, err := eval(string(b), root, input, libs...)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+	for {
+		res, val, err := eval(string(b), root, input, libs...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		fmt.Println(res)
+
+		// Check if we want more. This can happen when we have a map
+		// and the map has a true boolean field, state.want_more.
+		m, ok := val.(map[string]any)
+		if !ok {
+			break
+		}
+		state, ok := m["state"].(map[string]any)
+		if !ok {
+			break
+		}
+		if more, _ := state["want_more"].(bool); !more {
+			break
+		}
+		input = val
 	}
-	fmt.Println(res)
 	return 0
 }
 
@@ -246,10 +263,10 @@ func debug(tag string, value any) {
 	fmt.Fprintf(os.Stderr, "%s: logging %q: %v\n", level, tag, value)
 }
 
-func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, error) {
+func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, any, error) {
 	prg, err := compile(src, root, libs...)
 	if err != nil {
-		return "", fmt.Errorf("failed program instantiation: %v", err)
+		return "", nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
 	return run(prg, false, input)
 }
@@ -275,32 +292,33 @@ func compile(src, root string, libs ...cel.EnvOption) (cel.Program, error) {
 	return prg, nil
 }
 
-func run(prg cel.Program, fast bool, input interface{}) (string, error) {
+func run(prg cel.Program, fast bool, input interface{}) (string, any, error) {
 	if input == nil {
 		input = interpreter.EmptyActivation()
 	}
 	out, _, err := prg.Eval(input)
 	if err != nil {
-		return "", fmt.Errorf("failed eval: %v", err)
+		return "", nil, fmt.Errorf("failed eval: %v", err)
 	}
 
 	v, err := out.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
 	if err != nil {
-		return "", fmt.Errorf("failed proto conversion: %v", err)
+		return "", nil, fmt.Errorf("failed proto conversion: %v", err)
 	}
+	val := v.(*structpb.Value).AsInterface()
 	if fast {
 		b, err := protojson.MarshalOptions{}.Marshal(v.(proto.Message))
 		if err != nil {
-			return "", fmt.Errorf("failed native conversion: %v", err)
+			return "", nil, fmt.Errorf("failed native conversion: %v", err)
 		}
-		return string(b), nil
+		return string(b), val, nil
 	}
 	var buf strings.Builder
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "\t")
-	err = enc.Encode(v.(*structpb.Value).AsInterface())
-	return strings.TrimRight(buf.String(), "\n"), err
+	err = enc.Encode(val)
+	return strings.TrimRight(buf.String(), "\n"), val, err
 }
 
 // rot13 is provided for testing purposes.
