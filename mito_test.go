@@ -144,7 +144,7 @@ func TestSend(t *testing.T) {
 		got = <-chans["ch"]
 	}()
 
-	res, err := eval(`42.send_to("ch").close("ch")`, "", nil, send)
+	res, _, err := eval(`42.send_to("ch").close("ch")`, "", nil, send)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestVars(t *testing.T) {
 }`
 	)
 
-	got, err := eval(src, "", interpreter.EmptyActivation(), vars)
+	got, _, err := eval(src, "", interpreter.EmptyActivation(), vars)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -359,7 +359,7 @@ var regexpTests = []struct {
 func TestRegaxp(t *testing.T) {
 	for _, test := range regexpTests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := eval(test.src, "", interpreter.EmptyActivation(), lib.Regexp(test.regexps))
+			got, _, err := eval(test.src, "", interpreter.EmptyActivation(), lib.Regexp(test.regexps))
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}

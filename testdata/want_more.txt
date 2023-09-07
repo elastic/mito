@@ -1,0 +1,44 @@
+mito -data state.json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{"n": 0}
+-- src.cel --
+int(state.n).as(n, {
+	"state": {
+		"n":         n+1,
+		"want_more": n+1 < 5,
+	}
+})
+-- want.txt --
+{
+	"state": {
+		"n": 1,
+		"want_more": true
+	}
+}
+{
+	"state": {
+		"n": 2,
+		"want_more": true
+	}
+}
+{
+	"state": {
+		"n": 3,
+		"want_more": true
+	}
+}
+{
+	"state": {
+		"n": 4,
+		"want_more": true
+	}
+}
+{
+	"state": {
+		"n": 5,
+		"want_more": false
+	}
+}

@@ -309,7 +309,7 @@ func BenchmarkMito(b *testing.B) {
 			b.StartTimer()
 
 			for i := 0; i < b.N; i++ {
-				v, err := run(prg, *fastMarshal, state)
+				v, _, err := run(prg, *fastMarshal, state)
 				if err != nil {
 					b.Fatalf("failed operation: %v", err)
 				}
