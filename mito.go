@@ -190,19 +190,15 @@ func Main() int {
 		fmt.Println(res)
 
 		// Check if we want more. This can happen when we have a map
-		// and the map has a true boolean field, state.want_more.
-		m, ok := val.(map[string]any)
-		if !ok {
-			break
-		}
-		state, ok := m["state"].(map[string]any)
+		// and the map has a true boolean field, want_more.
+		state, ok := val.(map[string]any)
 		if !ok {
 			break
 		}
 		if more, _ := state["want_more"].(bool); !more {
 			break
 		}
-		input = val
+		input = map[string]any{"state": val}
 	}
 	return 0
 }

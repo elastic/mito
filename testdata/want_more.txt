@@ -6,39 +6,27 @@ cmp stdout want.txt
 {"n": 0}
 -- src.cel --
 int(state.n).as(n, {
-	"state": {
-		"n":         n+1,
-		"want_more": n+1 < 5,
-	}
+	"n":         n+1,
+	"want_more": n+1 < 5,
 })
 -- want.txt --
 {
-	"state": {
-		"n": 1,
-		"want_more": true
-	}
+	"n": 1,
+	"want_more": true
 }
 {
-	"state": {
-		"n": 2,
-		"want_more": true
-	}
+	"n": 2,
+	"want_more": true
 }
 {
-	"state": {
-		"n": 3,
-		"want_more": true
-	}
+	"n": 3,
+	"want_more": true
 }
 {
-	"state": {
-		"n": 4,
-		"want_more": true
-	}
+	"n": 4,
+	"want_more": true
 }
 {
-	"state": {
-		"n": 5,
-		"want_more": false
-	}
+	"n": 5,
+	"want_more": false
 }
