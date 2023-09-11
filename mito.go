@@ -36,6 +36,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	runtimedebug "runtime/debug"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -68,7 +69,11 @@ func Main() int {
 	data := flag.String("data", "", "path to a JSON object holding input (exposed as the label "+root+")")
 	cfgPath := flag.String("cfg", "", "path to a YAML file holding configuration for global vars and regular expressions")
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
+	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+	if *version {
+		return printVersion()
+	}
 	if len(flag.Args()) != 1 {
 		flag.Usage()
 		return 2
@@ -198,6 +203,37 @@ func Main() int {
 			break
 		}
 		input = val
+	}
+	return 0
+}
+
+func printVersion() int {
+	bi, ok := runtimedebug.ReadBuildInfo()
+	if !ok {
+		fmt.Fprintln(os.Stderr, "no build info")
+		return 1
+	}
+	var revision, modified string
+	for _, bs := range bi.Settings {
+		switch bs.Key {
+		case "vcs.revision":
+			revision = bs.Value
+		case "vcs.modified":
+			modified = bs.Value
+		}
+	}
+	if revision == "" {
+		fmt.Println(bi.Main.Version)
+		return 0
+	}
+	switch modified {
+	case "true":
+		fmt.Println(bi.Main.Version, revision, "(modified)")
+	case "false":
+		fmt.Println(bi.Main.Version, revision)
+	default:
+		// This should never happen.
+		fmt.Println(bi.Main.Version, revision, modified)
 	}
 	return 0
 }
