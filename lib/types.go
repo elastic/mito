@@ -52,7 +52,6 @@ var (
 		types.IntType:       reflectInt64Type,
 		types.ListType:      reflect.TypeOf([]interface{}(nil)),
 		types.MapType:       reflectMapStringAnyType,
-		types.NullType:      reflect.TypeOf((*int)(nil)), // Any pointer will do.
 		types.StringType:    reflectStringType,
 		types.TimestampType: reflect.TypeOf(time.Time{}),
 		types.UintType:      reflect.TypeOf(uint64(0)),
