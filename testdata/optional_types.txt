@@ -1,0 +1,14 @@
+mito -data state.json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{"n": 0}
+-- src.cel --
+{
+	"has_x_y_z": has(state.?x.?y.z),
+}
+-- want.txt --
+{
+	"has_x_y_z": false
+}
