@@ -79,7 +79,9 @@ func Main() int {
 		return 2
 	}
 
-	var libs []cel.EnvOption
+	libs := []cel.EnvOption{
+		cel.OptionalTypes(cel.OptionalTypesVersion(lib.OptionalTypesVersion)),
+	}
 	if *cfgPath != "" {
 		f, err := os.Open(*cfgPath)
 		if err != nil {

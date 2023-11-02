@@ -28,6 +28,10 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+// OptionalTypesVersion is the version of the optional types library
+// used by mito.
+const OptionalTypesVersion = 1
+
 // Types used in overloads.
 var (
 	typeV        = decls.NewTypeParamType("V")
