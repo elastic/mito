@@ -6,14 +6,14 @@ require (
 	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.15.3
+	github.com/google/cel-go v0.17.7
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.8.1
 	golang.org/x/oauth2 v0.7.0
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
 	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

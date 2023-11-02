@@ -107,44 +107,44 @@ func (jsonLib) CompileOptions() []cel.EnvOption {
 			),
 			decls.NewFunction("decode_json",
 				decls.NewOverload(
-					"decode_json_string_or_bytes",
+					"decode_json_string",
 					[]*expr.Type{decls.String},
 					decls.Dyn,
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_json",
+					"string_decode_json",
 					[]*expr.Type{decls.String},
 					decls.Dyn,
 				),
 				decls.NewOverload(
-					"decode_json_string_or_bytes",
+					"decode_json_bytes",
 					[]*expr.Type{decls.Bytes},
 					decls.Dyn,
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_json",
+					"bytes_decode_json",
 					[]*expr.Type{decls.Bytes},
 					decls.Dyn,
 				),
 			),
 			decls.NewFunction("decode_json_stream",
 				decls.NewOverload(
-					"decode_json_stream_string_or_bytes",
+					"decode_json_stream_string",
 					[]*expr.Type{decls.String},
 					decls.NewListType(decls.Dyn),
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_json_stream",
+					"string_decode_json_stream",
 					[]*expr.Type{decls.String},
 					decls.NewListType(decls.Dyn),
 				),
 				decls.NewOverload(
-					"decode_json_stream_string_or_bytes",
+					"decode_json_stream_bytes",
 					[]*expr.Type{decls.Bytes},
 					decls.NewListType(decls.Dyn),
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_json_stream",
+					"bytes_decode_json_stream",
 					[]*expr.Type{decls.Bytes},
 					decls.NewListType(decls.Dyn),
 				),
@@ -167,21 +167,37 @@ func (l jsonLib) ProgramOptions() []cel.ProgramOption {
 		),
 		cel.Functions(
 			&functions.Overload{
-				Operator: "decode_json_string_or_bytes",
+				Operator: "decode_json_string",
 				Unary:    l.decodeJSON,
 			},
 			&functions.Overload{
-				Operator: "string_or_bytes_decode_json",
+				Operator: "decode_json_bytes",
+				Unary:    l.decodeJSON,
+			},
+			&functions.Overload{
+				Operator: "string_decode_json",
+				Unary:    l.decodeJSON,
+			},
+			&functions.Overload{
+				Operator: "bytes_decode_json",
 				Unary:    l.decodeJSON,
 			},
 		),
 		cel.Functions(
 			&functions.Overload{
-				Operator: "decode_json_stream_string_or_bytes",
+				Operator: "decode_json_stream_string",
 				Unary:    l.decodeJSONStream,
 			},
 			&functions.Overload{
-				Operator: "string_or_bytes_decode_json_stream",
+				Operator: "decode_json_stream_bytes",
+				Unary:    l.decodeJSONStream,
+			},
+			&functions.Overload{
+				Operator: "string_decode_json_stream",
+				Unary:    l.decodeJSONStream,
+			},
+			&functions.Overload{
+				Operator: "bytes_decode_json_stream",
 				Unary:    l.decodeJSONStream,
 			},
 		),
