@@ -87,42 +87,42 @@ func (xmlLib) CompileOptions() []cel.EnvOption {
 		cel.Declarations(
 			decls.NewFunction("decode_xml",
 				decls.NewOverload(
-					"decode_xml_string_or_bytes",
+					"decode_xml_string",
 					[]*expr.Type{decls.String},
 					decls.Dyn,
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_xml",
+					"string_decode_xml",
 					[]*expr.Type{decls.String},
 					decls.Dyn,
 				),
 				decls.NewOverload(
-					"decode_xml_string_or_bytes",
+					"decode_xml_bytes",
 					[]*expr.Type{decls.Bytes},
 					decls.Dyn,
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_xml",
+					"bytes_decode_xml",
 					[]*expr.Type{decls.Bytes},
 					decls.Dyn,
 				),
 				decls.NewOverload(
-					"decode_xml_string_or_bytes_string",
+					"decode_xml_string_string",
 					[]*expr.Type{decls.String, decls.String},
 					decls.Dyn,
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_xml_string",
+					"string_decode_xml_string",
 					[]*expr.Type{decls.String, decls.String},
 					decls.Dyn,
 				),
 				decls.NewOverload(
-					"decode_xml_string_or_bytes_string",
+					"decode_xml_bytes_string",
 					[]*expr.Type{decls.Bytes, decls.String},
 					decls.Dyn,
 				),
 				decls.NewInstanceOverload(
-					"string_or_bytes_decode_xml_string",
+					"bytes_decode_xml_string",
 					[]*expr.Type{decls.Bytes, decls.String},
 					decls.Dyn,
 				),
@@ -135,19 +135,35 @@ func (l xmlLib) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{
 		cel.Functions(
 			&functions.Overload{
-				Operator: "decode_xml_string_or_bytes",
+				Operator: "decode_xml_string",
 				Unary:    l.decodeXML,
 			},
 			&functions.Overload{
-				Operator: "string_or_bytes_decode_xml",
+				Operator: "decode_xml_bytes",
 				Unary:    l.decodeXML,
 			},
 			&functions.Overload{
-				Operator: "decode_xml_string_or_bytes_string",
+				Operator: "string_decode_xml",
+				Unary:    l.decodeXML,
+			},
+			&functions.Overload{
+				Operator: "bytes_decode_xml",
+				Unary:    l.decodeXML,
+			},
+			&functions.Overload{
+				Operator: "decode_xml_string_string",
 				Binary:   l.decodeXMLWithXSD,
 			},
 			&functions.Overload{
-				Operator: "string_or_bytes_decode_xml_string",
+				Operator: "decode_xml_bytes_string",
+				Binary:   l.decodeXMLWithXSD,
+			},
+			&functions.Overload{
+				Operator: "string_decode_xml_string",
+				Binary:   l.decodeXMLWithXSD,
+			},
+			&functions.Overload{
+				Operator: "bytes_decode_xml_string",
 				Binary:   l.decodeXMLWithXSD,
 			},
 		),
