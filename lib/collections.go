@@ -235,6 +235,30 @@ import (
 //
 //	zip(["a", "b"], [1, 2])  // return {"a":1, "b":2}
 //	["a", "b"].zip([1, 2])   // return {"a":1, "b":2}
+//
+// # Keys
+//
+// Returns a list of keys from a map:
+//
+//	keys(<map<dyn,dyn>>) -> <list<dyn>>
+//	<map<dyn,dyn>>.keys() -> <list<dyn>>
+//
+// Examples:
+//
+//	keys({"a":1, "b":2})  // return ["a", "b"]
+//	{1:"a", 2:"b"}.keys()   // return [1, 2]
+//
+// # Values
+//
+// Returns a list of values from a map:
+//
+//	values(<map<dyn,dyn>>) -> <list<dyn>>
+//	<map<dyn,dyn>>.values() -> <list<dyn>>
+//
+// Examples:
+//
+//	values({"a":1, "b":2})  // return [1, 2]
+//	{1:"a", 2:"b"}.values()   // return ["a", "b"]
 func Collections() cel.EnvOption {
 	return cel.Lib(collectionsLib{})
 }
@@ -378,6 +402,34 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 					[]string{"K", "V"},
 				),
 			),
+			decls.NewFunction("keys",
+				decls.NewParameterizedInstanceOverload(
+					"map_keys",
+					[]*expr.Type{mapKV},
+					listK,
+					[]string{"K"},
+				),
+				decls.NewParameterizedOverload(
+					"keys_map",
+					[]*expr.Type{mapKV},
+					listK,
+					[]string{"K"},
+				),
+			),
+			decls.NewFunction("values",
+				decls.NewParameterizedInstanceOverload(
+					"map_values",
+					[]*expr.Type{mapKV},
+					listV,
+					[]string{"V"},
+				),
+				decls.NewParameterizedOverload(
+					"values_map",
+					[]*expr.Type{mapKV},
+					listV,
+					[]string{"V"},
+				),
+			),
 		),
 	}
 }
@@ -478,6 +530,26 @@ func (collectionsLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "list_zip",
 				Binary:   zipLists,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "map_keys",
+				Unary:    mapKeys,
+			},
+			&functions.Overload{
+				Operator: "keys_map",
+				Unary:    mapKeys,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "map_values",
+				Unary:    mapValues,
+			},
+			&functions.Overload{
+				Operator: "values_map",
+				Unary:    mapValues,
 			},
 		),
 	}
@@ -946,6 +1018,44 @@ func zipLists(arg0, arg1 ref.Val) ref.Val {
 		m[keys.Get(i)] = vals.Get(i)
 	}
 	return types.NewRefValMap(types.DefaultTypeAdapter, m)
+}
+
+func mapKeys(val ref.Val) ref.Val {
+	mapK, ok := val.(traits.Mapper)
+	if !ok {
+		return types.ValOrErr(mapK, "no such overload")
+	}
+	n, _ := mapK.Size().(types.Int)
+	new := make([]ref.Val, 0, n)
+	if mapK.Size() != types.IntZero {
+		m, err := mapK.ConvertToNative(refValMap)
+		if err != nil {
+			return types.NewErr("unable to convert map to native: %v", err)
+		}
+		for key, _ := range m.(map[ref.Val]ref.Val) {
+			new = append(new, key)
+		}
+	}
+	return types.NewRefValList(types.DefaultTypeAdapter, new)
+}
+
+func mapValues(val ref.Val) ref.Val {
+	mapK, ok := val.(traits.Mapper)
+	if !ok {
+		return types.ValOrErr(mapK, "no such overload")
+	}
+	n, _ := mapK.Size().(types.Int)
+	new := make([]ref.Val, 0, n)
+	if mapK.Size() != types.IntZero {
+		m, err := mapK.ConvertToNative(refValMap)
+		if err != nil {
+			return types.NewErr("unable to convert map to native: %v", err)
+		}
+		for _, value := range m.(map[ref.Val]ref.Val) {
+			new = append(new, value)
+		}
+	}
+	return types.NewRefValList(types.DefaultTypeAdapter, new)
 }
 
 func makeAs(eh parser.ExprHelper, target *expr.Expr, args []*expr.Expr) (*expr.Expr, *common.Error) {
