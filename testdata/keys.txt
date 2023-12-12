@@ -4,7 +4,7 @@ cmp stdout want.txt
 
 -- src.cel --
 {
-	"good_instance": {"a": 1, "b": 2}.keys(),
+	"good_instance": {"a": {1: "aa"}, "b": [2, 3]}.keys(),
 	"good_function": keys({1: "a", 2: "b"}),
 }
 -- want.txt --
