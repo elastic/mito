@@ -19,6 +19,8 @@ package lib
 
 import (
 	"bytes"
+	"compress/bzip2"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -32,9 +34,17 @@ import (
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
+type WASMEnvironment int
+
+const (
+	UnknownWASMEnvironment WASMEnvironment = iota + 1
+	WASIEnvironment
+)
+
 type WASMModule struct {
-	Object []byte
-	Funcs  map[string]WASMDecl
+	Object      []byte
+	Environment WASMEnvironment
+	Funcs       map[string]WASMDecl
 }
 
 type WASMDecl struct {
@@ -70,7 +80,11 @@ func WASM(adapter ref.TypeAdapter, modules map[string]WASMModule) (cel.EnvOption
 	}
 	mods := make(map[string]wasmModule, len(modules))
 	for modName, mod := range modules {
-		inst, funcs, err := compile(mod.Object, mod.Funcs)
+		obj, err := expand(mod.Object)
+		if err != nil {
+			return nil, err
+		}
+		inst, funcs, err := compile(obj, mod.Funcs, mod.Environment)
 		if err != nil {
 			return nil, err
 		}
@@ -96,12 +110,55 @@ func WASM(adapter ref.TypeAdapter, modules map[string]WASMModule) (cel.EnvOption
 	return cel.Lib(wasmLib{adapter: adapter, modules: mods}), nil
 }
 
-func compile(obj []byte, decls map[string]WASMDecl) (*wasmer.Instance, map[string]wasmer.NativeFunction, error) {
-	module, err := wasmer.NewModule(wasmer.NewStore(wasmer.NewEngine()), obj)
+func expand(obj []byte) ([]byte, error) {
+	var (
+		r   io.Reader
+		err error
+	)
+	switch {
+	case bytes.HasPrefix(obj, []byte{0x00, 0x61, 0x73, 0x6d}):
+		return obj, nil
+	case bytes.HasPrefix(obj, []byte{0x1f, 0x8b}):
+		r, err = gzip.NewReader(bytes.NewReader(obj))
+		if err != nil {
+			return nil, fmt.Errorf("invalid object: %w", err)
+		}
+	case bytes.HasPrefix(obj, []byte{0x42, 0x5a, 0x68}):
+		r = bzip2.NewReader(bytes.NewReader(obj))
+	default:
+		return nil, errors.New("invalid object: unrecognized magic bytes")
+	}
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func compile(obj []byte, decls map[string]WASMDecl, env WASMEnvironment) (*wasmer.Instance, map[string]wasmer.NativeFunction, error) {
+	store := wasmer.NewStore(wasmer.NewEngine())
+	module, err := wasmer.NewModule(store, obj)
 	if err != nil {
 		return nil, nil, err
 	}
-	inst, err := wasmer.NewInstance(module, wasmer.NewImportObject())
+	var importObject *wasmer.ImportObject
+	switch env {
+	case UnknownWASMEnvironment:
+		importObject = wasmer.NewImportObject()
+	case WASIEnvironment:
+		wasi, err := wasmer.NewWasiStateBuilder("wasi-program").Finalize()
+		if err != nil {
+			return nil, nil, err
+		}
+		importObject, err = wasi.GenerateImportObject(store, module)
+		if err != nil {
+			return nil, nil, err
+		}
+	default:
+		return nil, nil, fmt.Errorf("invalid environment: %v", env)
+	}
+	inst, err := wasmer.NewInstance(module, importObject)
 	if err != nil {
 		return nil, nil, err
 	}

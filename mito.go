@@ -127,9 +127,17 @@ func Main() int {
 					fmt.Fprintln(os.Stderr, err)
 					return 2
 				}
+				var env lib.WASMEnvironment
+				switch {
+				case strings.EqualFold(mod.Environment, "wasi"):
+					env = lib.WASIEnvironment
+				case strings.EqualFold(mod.Environment, "wasm"):
+					env = lib.UnknownWASMEnvironment
+				}
 				modules[modName] = lib.WASMModule{
-					Object: obj,
-					Funcs:  funcs,
+					Object:      obj,
+					Funcs:       funcs,
+					Environment: env,
 				}
 			}
 			wasm, err := lib.WASM(nil, modules)
@@ -422,8 +430,9 @@ type config struct {
 }
 
 type wasmModule struct {
-	Object string              `yaml:"obj"` // base64 encoded bytes
-	Funcs  map[string]wasmDecl `yaml:"funcs"`
+	Object      string              `yaml:"obj"` // base64 encoded bytes
+	Funcs       map[string]wasmDecl `yaml:"funcs"`
+	Environment string              `yaml:"env"`
 }
 
 type wasmDecl struct {
