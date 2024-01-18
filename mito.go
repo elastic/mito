@@ -298,41 +298,41 @@ func debug(tag string, value any) {
 }
 
 func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, any, error) {
-	prg, err := compile(src, root, libs...)
+	prg, ast, err := compile(src, root, libs...)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
-	return run(prg, false, input)
+	return run(prg, ast, false, input)
 }
 
-func compile(src, root string, libs ...cel.EnvOption) (cel.Program, error) {
+func compile(src, root string, libs ...cel.EnvOption) (cel.Program, *cel.Ast, error) {
 	opts := append([]cel.EnvOption{
 		cel.Declarations(decls.NewVar(root, decls.Dyn)),
 	}, libs...)
 	env, err := cel.NewEnv(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create env: %v", err)
+		return nil, nil, fmt.Errorf("failed to create env: %v", err)
 	}
 
 	ast, iss := env.Compile(src)
 	if iss.Err() != nil {
-		return nil, fmt.Errorf("failed compilation: %v", iss.Err())
+		return nil, nil, fmt.Errorf("failed compilation: %v", iss.Err())
 	}
 
 	prg, err := env.Program(ast)
 	if err != nil {
-		return nil, fmt.Errorf("failed program instantiation: %v", err)
+		return nil, nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
-	return prg, nil
+	return prg, ast, nil
 }
 
-func run(prg cel.Program, fast bool, input interface{}) (string, any, error) {
+func run(prg cel.Program, ast *cel.Ast, fast bool, input interface{}) (string, any, error) {
 	if input == nil {
 		input = interpreter.EmptyActivation()
 	}
 	out, _, err := prg.Eval(input)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed eval: %v", err)
+		return "", nil, fmt.Errorf("failed eval: %v", lib.DecoratedError{AST: ast, Err: err})
 	}
 
 	v, err := out.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
