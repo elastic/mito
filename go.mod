@@ -6,7 +6,7 @@ require (
 	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.18.2
+	github.com/google/cel-go v0.19.0
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.8.1
@@ -24,6 +24,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
