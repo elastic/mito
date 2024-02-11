@@ -19,6 +19,7 @@ package lib
 
 import (
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/google/cel-go/cel"
@@ -1025,18 +1026,29 @@ func mapKeys(val ref.Val) ref.Val {
 	if !ok {
 		return types.ValOrErr(mapK, "no such overload")
 	}
-	n, _ := mapK.Size().(types.Int)
-	new := make([]ref.Val, 0, n)
+	n, ok := mapK.Size().(types.Int)
+	if !ok {
+		return types.NewErr("unable to get size of map")
+	}
+	keys := make([]ref.Val, 0, n)
 	if mapK.Size() != types.IntZero {
-		m, err := mapK.ConvertToNative(refValMap)
-		if err != nil {
-			return types.NewErr("unable to convert map to native: %v", err)
+		canSort := true
+		it := mapK.Iterator()
+		for it.HasNext() == types.True {
+			k := it.Next()
+			keys = append(keys, k)
+			_, ok := k.(traits.Comparer)
+			if !ok {
+				canSort = false
+			}
 		}
-		for key, _ := range m.(map[ref.Val]ref.Val) {
-			new = append(new, key)
+		if canSort {
+			sort.Slice(keys, func(i, j int) bool {
+				return keys[i].(traits.Comparer).Compare(keys[j]) == types.Int(-1)
+			})
 		}
 	}
-	return types.NewRefValList(types.DefaultTypeAdapter, new)
+	return types.NewRefValList(types.DefaultTypeAdapter, keys)
 }
 
 func mapValues(val ref.Val) ref.Val {
@@ -1044,18 +1056,32 @@ func mapValues(val ref.Val) ref.Val {
 	if !ok {
 		return types.ValOrErr(mapK, "no such overload")
 	}
-	n, _ := mapK.Size().(types.Int)
-	new := make([]ref.Val, 0, n)
+	n, ok := mapK.Size().(types.Int)
+	if !ok {
+		return types.NewErr("unable to get size of map")
+	}
+	keys := make([]ref.Val, 0, n)
+	values := make([]ref.Val, 0, n)
 	if mapK.Size() != types.IntZero {
-		m, err := mapK.ConvertToNative(refValMap)
-		if err != nil {
-			return types.NewErr("unable to convert map to native: %v", err)
+		canSort := true
+		it := mapK.Iterator()
+		for it.HasNext() == types.True {
+			k := it.Next()
+			v := mapK.Get(k)
+			keys = append(keys, k)
+			values = append(values, v)
+			_, ok := v.(traits.Comparer)
+			if !ok {
+				canSort = false
+			}
 		}
-		for _, value := range m.(map[ref.Val]ref.Val) {
-			new = append(new, value)
+		if canSort {
+			sort.Slice(values, func(i, j int) bool {
+				return keys[i].(traits.Comparer).Compare(keys[j]) == types.Int(-1)
+			})
 		}
 	}
-	return types.NewRefValList(types.DefaultTypeAdapter, new)
+	return types.NewRefValList(types.DefaultTypeAdapter, values)
 }
 
 func makeAs(eh parser.ExprHelper, target *expr.Expr, args []*expr.Expr) (*expr.Expr, *common.Error) {
