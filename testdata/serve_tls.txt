@@ -4,7 +4,7 @@ cmpenv src.cel src_var.cel
 
 ! mito -use http src.cel
 ! stdout .
-stderr 'failed eval: Get "https://127.0.0.1:[0-9]{1,5}": (?:tls: failed to verify certificate: )?x509: (?:certificate signed by unknown authority|.*certificate is not trusted)'
+stderr 'failed eval: ERROR: <input>:2:62: Get "https://127.0.0.1:[0-9]{1,5}": (?:tls: failed to verify certificate: )?x509: (?:certificate signed by unknown authority|.*certificate is not trusted)'
 
 mito -use http -insecure src.cel
 cmp stdout want_insecure.txt

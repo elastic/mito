@@ -25,6 +25,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common"
+	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/operators"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
@@ -1084,21 +1085,21 @@ func mapValues(val ref.Val) ref.Val {
 	return types.NewRefValList(types.DefaultTypeAdapter, values)
 }
 
-func makeAs(eh parser.ExprHelper, target *expr.Expr, args []*expr.Expr) (*expr.Expr, *common.Error) {
+func makeAs(eh parser.ExprHelper, target ast.Expr, args []ast.Expr) (ast.Expr, *common.Error) {
 	ident := args[0]
-	if _, ok := ident.ExprKind.(*expr.Expr_IdentExpr); !ok {
+	if ident.Kind() != ast.IdentKind {
 		return nil, &common.Error{Message: "argument is not an identifier"}
 	}
-	label := ident.GetIdentExpr().GetName()
+	label := ident.AsIdent()
 
 	fn := args[1]
 	target = eh.NewList(target) // Fold is a list comprehension, so fake this.
-	accuExpr := eh.Ident(parser.AccumulatorName)
+	accuExpr := eh.NewAccuIdent()
 	init := eh.NewList() // Also for the result.
-	condition := eh.LiteralBool(true)
-	step := eh.GlobalCall(operators.Add, accuExpr, eh.NewList(fn))
-	fold := eh.Fold(label, target, parser.AccumulatorName, init, condition, step, accuExpr)
-	return eh.GlobalCall(operators.Index, fold, eh.LiteralInt(0)), nil
+	condition := eh.NewLiteral(types.True)
+	step := eh.NewCall(operators.Add, accuExpr, eh.NewList(fn))
+	fold := eh.NewComprehension(target, label, parser.AccumulatorName, init, condition, step, accuExpr)
+	return eh.NewCall(operators.Index, fold, eh.NewLiteral(types.IntZero)), nil
 }
 
 // pathSepIndex returns the offset to a non-escaped dot path separator and
