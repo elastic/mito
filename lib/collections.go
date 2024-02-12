@@ -1062,8 +1062,12 @@ func mapValues(val ref.Val) ref.Val {
 		return types.NewErr("unable to get size of map")
 	}
 	values := make([]ref.Val, 0, n)
+	type valComparer interface {
+		ref.Val
+		traits.Comparer
+	}
 	type kv struct {
-		Key   ref.Val
+		Key   valComparer
 		Value ref.Val
 	}
 	if mapK.Size() != types.IntZero {
@@ -1073,15 +1077,15 @@ func mapValues(val ref.Val) ref.Val {
 		for it.HasNext() == types.True {
 			k := it.Next()
 			v := mapK.Get(k)
-			ss = append(ss, kv{k, v})
-			_, ok := k.(traits.Comparer)
+			ck, ok := k.(valComparer)
 			if !ok {
 				canSort = false
 			}
+			ss = append(ss, kv{ck, v})
 		}
 		if canSort {
 			sort.Slice(ss, func(i, j int) bool {
-				return ss[i].Key.(traits.Comparer).Compare(ss[j].Key) == types.Int(-1)
+				return ss[i].Key.Compare(ss[j].Key) == types.Int(-1)
 			})
 		}
 		for _, kv := range ss {
