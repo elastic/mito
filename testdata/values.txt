@@ -1,0 +1,30 @@
+mito -use collections,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{
+	"good_instance": {"c": {"cc": 4, "cd": 5}, "a": ["aa", "ab"], "b": [2, 3]}.values(),
+	"good_function": values({2: "b", 1: "a"}),
+}
+-- want.txt --
+{
+	"good_function": [
+		"a",
+		"b"
+	],
+	"good_instance": [
+		[
+			"aa",
+			"ab"
+		],
+		[
+			2,
+			3
+		],
+		{
+			"cc": 4,
+			"cd": 5
+		}
+	]
+}

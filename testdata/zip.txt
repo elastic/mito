@@ -6,6 +6,7 @@ cmp stdout want.txt
 {
 	"good_instance": ["a", "b"].zip([1, 2]),
 	"good_function": zip(["a", "b"], [1, 2]),
+	"good_function_2": zip(keys({"a": 1, "b": 2}), values({"a": 1, "b": 2})),
 	"bad_instance": try(["a", "b"].zip([1, 2, 3])),
 	"bad_function": try(zip(["a", "b"], [1, 2, 3])),
 }
@@ -14,6 +15,10 @@ cmp stdout want.txt
 	"bad_function": "zip: size(keys) != size(vals): 2 != 3",
 	"bad_instance": "zip: size(keys) != size(vals): 2 != 3",
 	"good_function": {
+		"a": 1,
+		"b": 2
+	},
+	"good_function_2": {
 		"a": 1,
 		"b": 2
 	},
