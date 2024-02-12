@@ -1,0 +1,20 @@
+mito -data state.json -max 2 src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{"n": 0}
+-- src.cel --
+int(state.n).as(n, {
+	"n":         n+1,
+	"want_more": n+1 < 5,
+})
+-- want.txt --
+{
+	"n": 1,
+	"want_more": true
+}
+{
+	"n": 2,
+	"want_more": true
+}
