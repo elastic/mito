@@ -1061,25 +1061,31 @@ func mapValues(val ref.Val) ref.Val {
 	if !ok {
 		return types.NewErr("unable to get size of map")
 	}
-	keys := make([]ref.Val, 0, n)
 	values := make([]ref.Val, 0, n)
+	type kv struct {
+		Key   ref.Val
+		Value ref.Val
+	}
 	if mapK.Size() != types.IntZero {
 		canSort := true
 		it := mapK.Iterator()
+		ss := make([]kv, 0, n)
 		for it.HasNext() == types.True {
 			k := it.Next()
 			v := mapK.Get(k)
-			keys = append(keys, k)
-			values = append(values, v)
-			_, ok := v.(traits.Comparer)
+			ss = append(ss, kv{k, v})
+			_, ok := k.(traits.Comparer)
 			if !ok {
 				canSort = false
 			}
 		}
 		if canSort {
-			sort.Slice(values, func(i, j int) bool {
-				return keys[i].(traits.Comparer).Compare(keys[j]) == types.Int(-1)
+			sort.Slice(ss, func(i, j int) bool {
+				return ss[i].Key.(traits.Comparer).Compare(ss[j].Key) == types.Int(-1)
 			})
+		}
+		for _, kv := range ss {
+			values = append(values, kv.Value)
 		}
 	}
 	return types.NewRefValList(types.DefaultTypeAdapter, values)
