@@ -247,7 +247,7 @@ import (
 //
 // Examples:
 //
-//	keys({"a":1, "b":2})  // return ["a", "b"]
+//	keys({"a":1, "b":2})   // return ["a", "b"]
 //	{1:"a", 2:"b"}.keys()   // return [1, 2]
 //
 // # Values
@@ -259,7 +259,7 @@ import (
 //
 // Examples:
 //
-//	values({"a":1, "b":2})  // return [1, 2]
+//	values({"a":1, "b":2})   // return [1, 2]
 //	{1:"a", 2:"b"}.values()   // return ["a", "b"]
 func Collections() cel.EnvOption {
 	return cel.Lib(collectionsLib{})
