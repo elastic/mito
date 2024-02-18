@@ -1,2 +1,3 @@
 /target
 /Cargo.lock
+go_lib.base64

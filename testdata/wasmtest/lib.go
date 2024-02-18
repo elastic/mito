@@ -2,6 +2,7 @@
 //go:generate gzip go_lib.wasm
 //go:generate bash -c "base64 < go_lib.wasm.gz | fold > go_lib.base64"
 //go:generate rm go_lib.wasm.gz
+//go:generate go run ./bundle_lib_obj/main.go -test ../wasm.txt -lib go_testmod -wasm go_lib.base64
 
 package main
 
