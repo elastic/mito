@@ -26,6 +26,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -110,6 +111,41 @@ func Main() int {
 				regexps[name] = re
 			}
 			libs = append(libs, lib.Regexp(regexps))
+		}
+		if len(cfg.WASM) != 0 {
+			modules := make(map[string]lib.WASMModule, len(cfg.WASM))
+			for modName, mod := range cfg.WASM {
+				funcs := make(map[string]lib.WASMDecl, len(mod.Funcs))
+				for funcName, fn := range mod.Funcs {
+					funcs[funcName] = lib.WASMDecl{
+						Params: fn.Params,
+						Return: fn.Return,
+					}
+				}
+				obj, err := base64.StdEncoding.DecodeString(mod.Object)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return 2
+				}
+				var env lib.WASMEnvironment
+				switch {
+				case strings.EqualFold(mod.Environment, "wasi"):
+					env = lib.WASIEnvironment
+				case strings.EqualFold(mod.Environment, "wasm"):
+					env = lib.UnknownWASMEnvironment
+				}
+				modules[modName] = lib.WASMModule{
+					Object:      obj,
+					Funcs:       funcs,
+					Environment: env,
+				}
+			}
+			wasm, err := lib.WASM(nil, modules)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 2
+			}
+			libs = append(libs, wasm)
 		}
 		if len(cfg.XSDs) != 0 {
 			xsds := make(map[string]string)
@@ -388,8 +424,20 @@ func toUpper(p []byte) {
 type config struct {
 	Globals map[string]interface{} `yaml:"globals"`
 	Regexps map[string]string      `yaml:"regexp"`
+	WASM    map[string]wasmModule  `yaml:"wasm"`
 	XSDs    map[string]string      `yaml:"xsd"`
 	Auth    *authConfig            `yaml:"auth"`
+}
+
+type wasmModule struct {
+	Object      string              `yaml:"obj"` // base64 encoded bytes
+	Funcs       map[string]wasmDecl `yaml:"funcs"`
+	Environment string              `yaml:"env"`
+}
+
+type wasmDecl struct {
+	Params []string `yaml:"params"`
+	Return string   `yaml:"return"`
 }
 
 type authConfig struct {
