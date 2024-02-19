@@ -9,6 +9,7 @@ package main
 import "C"
 
 import (
+	"strings"
 	"unsafe"
 )
 
@@ -51,12 +52,37 @@ func addOne(x int64) int64 {
 	return x + 1
 }
 
-//export concat
+//export concat_c_string
 func concat(a, b *C.char) *C.char {
 	// Use our own cString function to hook into our allocator rather
 	// than using the Cgo malloc, but use C.GoString to save work since
 	// the runtime already has null finding code and allocates with mallocgc.
 	return cString(C.GoString(a) + C.GoString(b))
+}
+
+//export concat_go_string
+func concatGoString(a, b string) string {
+	return a + b
+}
+
+//export bool_list
+func boolList(a, b, c, d, e, f, g, h bool) []bool {
+	return []bool{a, b, c, d, e, f, g, h}
+}
+
+//export double_list
+func doubleList(a, b float64) []float64 {
+	return []float64{a, b}
+}
+
+//export int_list
+func intList(a, b int64) []int64 {
+	return []int64{a, b}
+}
+
+//export comma_split
+func commaSplit(s string) []string {
+	return strings.Split(s, ",")
 }
 
 func cString(s string) *C.char {
