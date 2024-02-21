@@ -1,0 +1,11 @@
+[package]
+name = "wasmtest"
+version = "0.0.1"
+authors = ["Dan Kortschak <dan.kortschak@elastic.co>"]
+edition = "2018"
+
+[dependencies]
+
+# new material
+[lib]
+crate-type = ["cdylib"]
