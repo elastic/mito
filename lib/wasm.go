@@ -24,8 +24,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	gotypes "go/types"
 	"io"
 	"math"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -45,14 +50,9 @@ const (
 )
 
 type WASMModule struct {
-	Object      []byte
+	Funcs       []string
 	Environment WASMEnvironment
-	Funcs       map[string]WASMDecl
-}
-
-type WASMDecl struct {
-	Params []string
-	Return string
+	Object      []byte
 }
 
 type wasmLib struct {
@@ -100,7 +100,11 @@ func WASM(adapter ref.TypeAdapter, modules map[string]WASMModule) (cel.EnvOption
 		if err != nil {
 			return nil, err
 		}
-		inst, funcs, err := compile(obj, mod.Funcs, mod.Environment)
+		typs, err := funcTypes(modName, mod.Funcs)
+		if err != nil {
+			return nil, err
+		}
+		inst, funcs, err := compile(obj, typs, mod.Environment)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +112,7 @@ func WASM(adapter ref.TypeAdapter, modules map[string]WASMModule) (cel.EnvOption
 		if err != nil {
 			return nil, err
 		}
-		decls, err := celTypes(mod.Funcs)
+		decls, err := celTypes(typs)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +156,7 @@ func expand(obj []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func compile(obj []byte, decls map[string]WASMDecl, env WASMEnvironment) (*wasmer.Instance, map[string]wasmer.NativeFunction, error) {
+func compile(obj []byte, decls map[string]goWASMDecl, env WASMEnvironment) (*wasmer.Instance, map[string]wasmer.NativeFunction, error) {
 	store := wasmer.NewStore(wasmer.NewEngine())
 	module, err := wasmer.NewModule(store, obj)
 	if err != nil {
@@ -188,16 +192,142 @@ func compile(obj []byte, decls map[string]WASMDecl, env WASMEnvironment) (*wasme
 	return inst, funcs, nil
 }
 
-func celTypes(decls map[string]WASMDecl) (map[string]wasmDecl, error) {
+type goWASMDecl struct {
+	Params []gotypes.Type
+	Return gotypes.Type
+}
+
+func funcTypes(mod string, funcs []string) (map[string]goWASMDecl, error) {
+	if len(funcs) == 0 {
+		return nil, nil
+	}
+
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "",
+		`package `+mod+`
+import "C"
+func `+strings.Join(funcs, "\nfunc "), 0)
+	if err != nil {
+		return nil, err
+	}
+	config := gotypes.Config{
+		IgnoreFuncBodies: true,
+		FakeImportC:      true,
+		Importer:         nil,
+	}
+	_, err = config.Check(mod, fset, []*ast.File{f}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	types := make(map[string]goWASMDecl)
+	for _, decl := range f.Decls {
+		decl, ok := decl.(*ast.FuncDecl)
+		if !ok {
+			continue
+		}
+		params, err := paramTypes(decl.Type.Params.List)
+		if err != nil {
+			return nil, fmt.Errorf("invalid signature %s: %w", decl.Name.Name, err)
+		}
+		ret, err := returnType(decl.Type.Results.List)
+		if err != nil {
+			return nil, fmt.Errorf("invalid signature %s: %w", decl.Name.Name, err)
+		}
+		types[decl.Name.Name] = goWASMDecl{Params: params, Return: ret}
+	}
+	return types, nil
+}
+
+func paramTypes(list []*ast.Field) ([]gotypes.Type, error) {
+	var types []gotypes.Type
+	for _, f := range list {
+		n, typ, err := fieldType(f)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < n; i++ {
+			types = append(types, typ)
+		}
+	}
+	return types, nil
+}
+
+func returnType(list []*ast.Field) (gotypes.Type, error) {
+	if len(list) != 1 {
+		return nil, fmt.Errorf("invalid return: must have one return value: have %d", len(list))
+	}
+	n, typ, err := fieldType(list[0])
+	if n != 1 {
+		return nil, fmt.Errorf("invalid return: must have one return value: have %d", n)
+	}
+	return typ, err
+}
+
+func fieldType(field *ast.Field) (int, gotypes.Type, error) {
+	switch typ := field.Type.(type) {
+	case *ast.ArrayType:
+		elem, ok := typ.Elt.(*ast.Ident)
+		if !ok {
+			return 0, nil, fmt.Errorf("unsupported type: %T", typ)
+		}
+		var a gotypes.Type
+		switch len := typ.Len.(type) {
+		case nil:
+			a = gotypes.NewSlice(gotypes.Universe.Lookup(elem.Name).Type())
+		case *ast.BasicLit:
+			n, err := strconv.ParseInt(len.Value, 10, 64)
+			if err != nil {
+				return 0, nil, fmt.Errorf("unsupported type: %T", typ)
+			}
+			a = gotypes.NewArray(gotypes.Universe.Lookup(elem.Name).Type(), n)
+		default:
+			return 0, nil, fmt.Errorf("unsupported type: %T", typ)
+		}
+		if len(field.Names) == 0 {
+			return 1, a, nil
+		}
+		return len(field.Names), a, nil
+	case *ast.StarExpr:
+		expr, ok := typ.X.(*ast.SelectorExpr)
+		if !ok || expr.Sel.Name != "char" {
+			return 0, nil, fmt.Errorf("unsupported type: %T", typ)
+		}
+		id, ok := expr.X.(*ast.Ident)
+		if !ok || id.Name != "C" {
+			return 0, nil, fmt.Errorf("unsupported type: %T", typ)
+		}
+		if len(field.Names) == 0 {
+			return 1, cStringType, nil
+		}
+		return len(field.Names), cStringType, nil
+	case *ast.Ident:
+		if len(field.Names) == 0 {
+			return 1, gotypes.Universe.Lookup(typ.Name).Type(), nil
+		}
+		return len(field.Names), gotypes.Universe.Lookup(typ.Name).Type(), nil
+	default:
+		return 0, nil, fmt.Errorf("unsupported type: %T", typ)
+	}
+}
+
+var (
+	// Avoid having to build a Cgo package to be able to use a *C.char sentinel.
+	// This is more effort than we really need to go to, but it feels better.
+	cStringType = gotypes.NewPointer(gotypes.NewNamed(gotypes.NewTypeName(0, nil, "_Ctype_char", i8), i8, nil))
+	i8          = gotypes.Universe.Lookup("int8").Type()
+)
+
+func celTypes(decls map[string]goWASMDecl) (map[string]wasmDecl, error) {
 	ds := make(map[string]wasmDecl, len(decls))
 	for fn, decl := range decls {
-		ret, err := celType(decl.Return)
+		ret, err := celType(decl.Return.String())
 		if err != nil {
 			return nil, err
 		}
 		params := make([]typeMapping, len(decl.Params))
 		for i, p := range decl.Params {
-			params[i], err = celType(p)
+			params[i], err = celType(p.String())
 			if err != nil {
 				return nil, err
 			}
@@ -219,18 +349,17 @@ func celType(typ string) (typeMapping, error) {
 }
 
 var typesTable = map[string]*types.Type{
-	"bool":    types.BoolType,
-	"bytes":   types.BytesType,
-	"double":  types.DoubleType,
-	"int64":   types.IntType,
-	"string":  types.StringType,
-	"cbytes":  types.BytesType,
-	"cstring": types.StringType,
+	"*_Ctype_char": types.StringType,
+	"bool":         types.BoolType,
+	"float64":      types.DoubleType,
+	"int64":        types.IntType,
+	"string":       types.StringType,
 
-	"list_bool":   types.NewListType(types.BoolType),
-	"list_double": types.NewListType(types.DoubleType),
-	"list_int64":  types.NewListType(types.IntType),
-	"list_string": types.NewListType(types.StringType),
+	"[]bool":    types.NewListType(types.BoolType),
+	"[]byte":    types.BytesType,
+	"[]float64": types.NewListType(types.DoubleType),
+	"[]int64":   types.NewListType(types.IntType),
+	"[]string":  types.NewListType(types.StringType),
 }
 
 func (l wasmLib) CompileOptions() []cel.EnvOption {
@@ -342,7 +471,7 @@ func expandArgs(retMapping typeMapping, mem *wasmer.Memory, alloc, free wasmer.N
 		}
 	}
 	switch retMapping.name {
-	case "string", "bytes":
+	case "string":
 		var addr int32
 		args, addr, err = allocRet(n, unsafe.Sizeof(stringHeader{}), alloc)
 		if err != nil {
@@ -358,7 +487,7 @@ func expandArgs(retMapping typeMapping, mem *wasmer.Memory, alloc, free wasmer.N
 			return s
 		}
 	default:
-		if !strings.HasPrefix(retMapping.name, "list_") {
+		if !strings.HasPrefix(retMapping.name, "[]") {
 			args = make([]any, 0, n)
 			break
 		}
@@ -369,7 +498,7 @@ func expandArgs(retMapping typeMapping, mem *wasmer.Memory, alloc, free wasmer.N
 		}
 		m := mem.Data()
 		h := m[addr : int(addr)+int(unsafe.Sizeof(sliceHeader{}))]
-		switch strings.TrimPrefix(retMapping.name, "list_") {
+		switch strings.TrimPrefix(retMapping.name, "[]") {
 		case "bool":
 			ret = func() any {
 				ptr := int32(binary.LittleEndian.Uint32(h[:4]))
@@ -380,7 +509,15 @@ func expandArgs(retMapping typeMapping, mem *wasmer.Memory, alloc, free wasmer.N
 				free(addr, int(unsafe.Sizeof(sliceHeader{})))
 				return s
 			}
-		case "double":
+		case "byte":
+			ret = func() any {
+				ptr := int32(binary.LittleEndian.Uint32(h[:4]))
+				len := int32(binary.LittleEndian.Uint32(h[4:8]))
+				s := bytes.Clone(m[ptr : ptr+len])
+				free(addr, int(unsafe.Sizeof(stringHeader{})))
+				return s
+			}
+		case "float64":
 			ret = func() any {
 				ptr := int32(binary.LittleEndian.Uint32(h[:4]))
 				len := int32(binary.LittleEndian.Uint32(h[4:8]))
@@ -461,30 +598,31 @@ func convertToWASM(arg ref.Val, typ typeMapping, mem *wasmer.Memory, alloc, free
 	switch typ.celType {
 	case types.BoolType, types.DoubleType, types.IntType:
 		return val, noop, nil
-	case types.StringType, types.BytesType:
-		var s string
+	case types.BytesType:
+		switch val := val.(type) {
+		case []byte:
+			switch typ.name {
+			case "[]byte":
+				return byteslice(val, mem, alloc, free)
+			default:
+				panic("unreachable")
+			}
+		default:
+			return nil, noop, fmt.Errorf("%v is not a bytes: %[1]T", val)
+		}
+	case types.StringType:
 		switch val := val.(type) {
 		case string:
-			s = val
-		case []byte:
-			s = string(val)
-		default:
-			var want string
-			switch typ.celType {
-			case types.StringType:
-				want = "string"
-			case types.BytesType:
-				want = "bytes"
+			switch typ.name {
+			case "*_Ctype_char":
+				return cstring(val, mem, alloc, free)
+			case "string":
+				return nativestring(val, mem, alloc, free)
+			default:
+				panic("unreachable")
 			}
-			return nil, noop, fmt.Errorf("%v is not a %s: %[1]T", val, want)
-		}
-		switch typ.name {
-		case "cstring", "cbytes":
-			return cstring(s, mem, alloc, free)
-		case "string", "bytes":
-			return nativestring(s, mem, alloc, free)
 		default:
-			panic("unreachable")
+			return nil, noop, fmt.Errorf("%v is not a string: %[1]T", val)
 		}
 	default:
 		panic("invalid type")
@@ -570,6 +708,28 @@ func nativestring(s string, mem *wasmer.Memory, alloc, free wasmer.NativeFunctio
 	copy(data, s)
 	return stringHeader{ptr: int32(addr), len: int32(len(s))}, func() {
 		free(addr, len(s))
+	}, nil
+}
+
+func byteslice(b []byte, mem *wasmer.Memory, alloc, free wasmer.NativeFunction) (sliceHeader, func(), error) {
+	if alloc == nil {
+		return sliceHeader{}, noop, errors.New("no allocator")
+	}
+	if free == nil {
+		return sliceHeader{}, noop, errors.New("no deallocator")
+	}
+	ptr, err := alloc(len(b))
+	if err != nil {
+		return sliceHeader{}, noop, err
+	}
+	addr, ok := ptr.(int32)
+	if !ok {
+		return sliceHeader{}, noop, errors.New("null pointer")
+	}
+	data := mem.Data()[addr : int(addr)+len(b)]
+	copy(data, b)
+	return sliceHeader{ptr: int32(addr), len: int32(len(b)), cap: int32(len(b))}, func() {
+		free(addr, len(b))
 	}, nil
 }
 

@@ -60,6 +60,11 @@ func concat(a, b *C.char) *C.char {
 	return cString(C.GoString(a) + C.GoString(b))
 }
 
+//export concat_bytes
+func concatBytes(a, b []byte) []byte {
+	return append(a[:len(a):len(a)], b...)
+}
+
 //export concat_go_string
 func concatGoString(a, b string) string {
 	return a + b

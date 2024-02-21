@@ -115,13 +115,6 @@ func Main() int {
 		if len(cfg.WASM) != 0 {
 			modules := make(map[string]lib.WASMModule, len(cfg.WASM))
 			for modName, mod := range cfg.WASM {
-				funcs := make(map[string]lib.WASMDecl, len(mod.Funcs))
-				for funcName, fn := range mod.Funcs {
-					funcs[funcName] = lib.WASMDecl{
-						Params: fn.Params,
-						Return: fn.Return,
-					}
-				}
 				obj, err := base64.StdEncoding.DecodeString(mod.Object)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -135,8 +128,8 @@ func Main() int {
 					env = lib.UnknownWASMEnvironment
 				}
 				modules[modName] = lib.WASMModule{
+					Funcs:       mod.Funcs,
 					Object:      obj,
-					Funcs:       funcs,
 					Environment: env,
 				}
 			}
@@ -430,9 +423,9 @@ type config struct {
 }
 
 type wasmModule struct {
-	Object      string              `yaml:"obj"` // base64 encoded bytes
-	Funcs       map[string]wasmDecl `yaml:"funcs"`
-	Environment string              `yaml:"env"`
+	Object      string   `yaml:"obj"` // base64 encoded bytes
+	Funcs       []string `yaml:"funcs"`
+	Environment string   `yaml:"env"`
 }
 
 type wasmDecl struct {

@@ -17,13 +17,9 @@ type config struct {
 	Auth    map[string]any         `yaml:"auth,omitempty"`
 }
 type wasmModule struct {
-	Funcs       map[string]wasmDecl `yaml:"funcs,omitempty"`
-	Environment string              `yaml:"env"`
-	Object      string              `yaml:"obj"` // base64 encoded bytes
-}
-type wasmDecl struct {
-	Params []string `yaml:"params,omitempty"`
-	Return string   `yaml:"return"`
+	Funcs       []string `yaml:"funcs,omitempty"`
+	Environment string   `yaml:"env"`
+	Object      string   `yaml:"obj"` // base64 encoded bytes
 }
 
 func main() {
