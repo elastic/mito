@@ -6,9 +6,13 @@ cmp stdout want.txt
 [
 	"hello world".base64(),
 	base64("hello world"),
+	string("aGVsbG8gd29ybGQ=".base64_decode()),
+	string(base64_decode("aGVsbG8gd29ybGQ=")),
 ]
 -- want.txt --
 [
 	"aGVsbG8gd29ybGQ=",
-	"aGVsbG8gd29ybGQ="
+	"aGVsbG8gd29ybGQ=",
+	"hello world",
+	"hello world"
 ]

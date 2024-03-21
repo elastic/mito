@@ -51,6 +51,17 @@ import (
 //
 //	"hello world".base64()  // return "aGVsbG8gd29ybGQ="
 //
+// # Base64 Decode
+//
+// Returns a bytes from the base64 encoding in a string:
+//
+//	base64_decode(<string>) -> <bytes>
+//	<string>.base64_decode() -> <bytes>
+//
+// Examples:
+//
+//	"aGVsbG8gd29ybGQ=".base64_decode()  // return b"hello world"
+//
 // # Base64 Raw
 //
 // Returns a string of the raw unpadded base64 encoding of a string or bytes:
@@ -63,6 +74,17 @@ import (
 // Examples:
 //
 //	"hello world".base64_raw()  // return "aGVsbG8gd29ybGQ"
+//
+// # Base64 Raw Decode
+//
+// Returns a bytes from the raw base64 encoding in a string:
+//
+//	base64_raw_decode(<string>) -> <bytes>
+//	<string>.base64_raw_decode() -> <bytes>
+//
+// Examples:
+//
+//	"aGVsbG8gd29ybGQ".base64_raw_decode()  // return b"hello world"
 //
 // # Hex
 //
@@ -175,6 +197,18 @@ func (cryptoLib) CompileOptions() []cel.EnvOption {
 					decls.String,
 				),
 			),
+			decls.NewFunction("base64_decode",
+				decls.NewOverload(
+					"base64_decode_string",
+					[]*expr.Type{decls.String},
+					decls.Bytes,
+				),
+				decls.NewInstanceOverload(
+					"string_base64_decode",
+					[]*expr.Type{decls.String},
+					decls.Bytes,
+				),
+			),
 			decls.NewFunction("base64_raw",
 				decls.NewOverload(
 					"base64_raw_bytes",
@@ -195,6 +229,18 @@ func (cryptoLib) CompileOptions() []cel.EnvOption {
 					"string_base64_raw",
 					[]*expr.Type{decls.String},
 					decls.String,
+				),
+			),
+			decls.NewFunction("base64_raw_decode",
+				decls.NewOverload(
+					"base64_raw_decode_string",
+					[]*expr.Type{decls.String},
+					decls.Bytes,
+				),
+				decls.NewInstanceOverload(
+					"string_base64_raw_decode",
+					[]*expr.Type{decls.String},
+					decls.Bytes,
 				),
 			),
 			decls.NewFunction("hex",
@@ -340,6 +386,16 @@ func (cryptoLib) ProgramOptions() []cel.ProgramOption {
 		),
 		cel.Functions(
 			&functions.Overload{
+				Operator: "base64_decode_string",
+				Unary:    base64Decode,
+			},
+			&functions.Overload{
+				Operator: "string_base64_decode",
+				Unary:    base64Decode,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
 				Operator: "base64_raw_bytes",
 				Unary:    base64RawEncode,
 			},
@@ -354,6 +410,16 @@ func (cryptoLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "string_base64_raw",
 				Unary:    base64RawEncode,
+			},
+		),
+		cel.Functions(
+			&functions.Overload{
+				Operator: "base64_raw_decode_string",
+				Unary:    base64RawDecode,
+			},
+			&functions.Overload{
+				Operator: "string_base64_raw_decode",
+				Unary:    base64RawDecode,
 			},
 		),
 		cel.Functions(
@@ -466,6 +532,19 @@ func base64Encode(val ref.Val) ref.Val {
 	}
 }
 
+func base64Decode(val ref.Val) ref.Val {
+	switch val := val.(type) {
+	case types.String:
+		b, err := base64.StdEncoding.DecodeString(string(val))
+		if err != nil {
+			return types.NewErr("invalid base64 encoding: %w", err)
+		}
+		return types.Bytes(b)
+	default:
+		return types.NewErr("invalid type for base64_decode: %s", val.Type())
+	}
+}
+
 func base64RawEncode(val ref.Val) ref.Val {
 	switch val := val.(type) {
 	case types.Bytes:
@@ -474,6 +553,19 @@ func base64RawEncode(val ref.Val) ref.Val {
 		return types.String(base64.RawStdEncoding.EncodeToString([]byte(val)))
 	default:
 		return types.NewErr("invalid type for base64_raw: %s", val.Type())
+	}
+}
+
+func base64RawDecode(val ref.Val) ref.Val {
+	switch val := val.(type) {
+	case types.String:
+		b, err := base64.RawStdEncoding.DecodeString(string(val))
+		if err != nil {
+			return types.NewErr("invalid raw base64 encoding: %w", err)
+		}
+		return types.Bytes(b)
+	default:
+		return types.NewErr("invalid type for base64_raw_decode: %s", val.Type())
 	}
 }
 
