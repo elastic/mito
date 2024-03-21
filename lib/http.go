@@ -139,8 +139,9 @@ import (
 //
 // request returns a user-defined method request:
 //
-//	request(<string>, <string>, <string>, <bytes>) -> <map<string,dyn>>
-//	request(<string>, <string>, <string>, <string>) -> <map<string,dyn>>
+//	request(<string>, <string>) -> <map<string,dyn>>
+//	request(<string>, <string>, <bytes>) -> <map<string,dyn>>
+//	request(<string>, <string>, <string>) -> <map<string,dyn>>
 //
 // Example:
 //
