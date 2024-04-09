@@ -26,13 +26,10 @@ import (
 	"time"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/interpreter/functions"
 	"golang.org/x/time/rate"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Limit returns a cel.EnvOption to configure extended functions for interpreting
@@ -93,41 +90,26 @@ type limitLib struct {
 	policies map[string]LimitPolicy
 }
 
-func (limitLib) CompileOptions() []cel.EnvOption {
+func (l limitLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("rate_limit",
-				decls.NewOverload(
-					"map_dyn_rate_limit_string_duration",
-					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn), decls.String, decls.Duration},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		cel.Function("rate_limit",
+			cel.Overload(
+				"map_dyn_rate_limit_string_duration",
+				[]*cel.Type{mapStringDyn, cel.StringType, cel.DurationType},
+				mapStringDyn,
+				cel.FunctionBinding(l.translatePolicy),
 			),
-			decls.NewFunction("rate_limit",
-				decls.NewOverload(
-					"map_dyn_rate_limit_string_bool_bool_duration_int",
-					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn), decls.String, decls.Bool, decls.Bool, decls.Duration, decls.Int},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+			cel.Overload(
+				"map_dyn_rate_limit_string_bool_bool_duration_int",
+				[]*cel.Type{mapStringDyn, cel.StringType, cel.BoolType, cel.BoolType, cel.DurationType, cel.IntType},
+				mapStringDyn,
+				cel.FunctionBinding(translatePolicy),
 			),
 		),
 	}
 }
 
-func (l limitLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_dyn_rate_limit_string_duration",
-				Function: l.translatePolicy,
-			},
-			&functions.Overload{
-				Operator: "map_dyn_rate_limit_string_bool_bool_duration_int",
-				Function: translatePolicy,
-			},
-		),
-	}
-}
+func (limitLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (l limitLib) translatePolicy(args ...ref.Val) ref.Val {
 	if len(args) != 3 {

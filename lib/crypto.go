@@ -27,12 +27,9 @@ import (
 	"hash"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
 	"github.com/google/uuid"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Crypto returns a cel.EnvOption to configure extended functions for
@@ -174,352 +171,237 @@ type cryptoLib struct{}
 
 func (cryptoLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("base64",
-				decls.NewOverload(
-					"base64_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"bytes_base64",
-					[]*expr.Type{decls.Bytes},
-					decls.String,
-				),
-				decls.NewOverload(
-					"base64_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"string_base64",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+		cel.Function("base64",
+			cel.MemberOverload(
+				"bytes_base64",
+				[]*cel.Type{cel.BytesType},
+				cel.StringType,
+				cel.UnaryBinding(base64Encode),
 			),
-			decls.NewFunction("base64_decode",
-				decls.NewOverload(
-					"base64_decode_string",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"string_base64_decode",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
+			cel.Overload(
+				"base64_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.StringType,
+				cel.UnaryBinding(base64Encode),
 			),
-			decls.NewFunction("base64_raw",
-				decls.NewOverload(
-					"base64_raw_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"bytes_base64_raw",
-					[]*expr.Type{decls.Bytes},
-					decls.String,
-				),
-				decls.NewOverload(
-					"base64_raw_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"string_base64_raw",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+			cel.MemberOverload(
+				"string_base64",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(base64Encode),
 			),
-			decls.NewFunction("base64_raw_decode",
-				decls.NewOverload(
-					"base64_raw_decode_string",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"string_base64_raw_decode",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
+			cel.Overload(
+				"base64_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(base64Encode),
 			),
-			decls.NewFunction("hex",
-				decls.NewOverload(
-					"hex_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"bytes_hex",
-					[]*expr.Type{decls.Bytes},
-					decls.String,
-				),
-				decls.NewOverload(
-					"hex_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"string_hex",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+		),
+
+		cel.Function("base64_decode",
+			cel.MemberOverload(
+				"string_base64_decode",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(base64Decode),
 			),
-			decls.NewFunction("md5",
-				decls.NewOverload(
-					"md5_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"bytes_md5",
-					[]*expr.Type{decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewOverload(
-					"md5_string",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"string_md5",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
+			cel.Overload(
+				"base64_decode_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(base64Decode),
 			),
-			decls.NewFunction("sha1",
-				decls.NewOverload(
-					"sha1_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"bytes_sha1",
-					[]*expr.Type{decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewOverload(
-					"sha1_string",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"string_sha1",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
+		),
+
+		cel.Function("base64_raw",
+			cel.MemberOverload(
+				"bytes_base64_raw",
+				[]*cel.Type{cel.BytesType},
+				cel.StringType,
+				cel.UnaryBinding(base64RawEncode),
 			),
-			decls.NewFunction("sha256",
-				decls.NewOverload(
-					"sha256_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"bytes_sha256",
-					[]*expr.Type{decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewOverload(
-					"sha256_string",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"string_sha256",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
+			cel.Overload(
+				"base64_raw_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.StringType,
+				cel.UnaryBinding(base64RawEncode),
 			),
-			decls.NewFunction("hmac",
-				decls.NewOverload(
-					"hmac_bytes_string_bytes",
-					[]*expr.Type{decls.Bytes, decls.String, decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"bytes_hmac_string_bytes",
-					[]*expr.Type{decls.Bytes, decls.String, decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewOverload(
-					"hmac_string_string_bytes",
-					[]*expr.Type{decls.String, decls.String, decls.Bytes},
-					decls.Bytes,
-				),
-				decls.NewInstanceOverload(
-					"string_hmac_string_bytes",
-					[]*expr.Type{decls.String, decls.String, decls.Bytes},
-					decls.Bytes,
-				),
+			cel.MemberOverload(
+				"string_base64_raw",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(base64RawEncode),
 			),
-			decls.NewFunction("uuid",
-				decls.NewOverload(
-					"uuid_string",
-					nil,
-					decls.String,
-				),
+			cel.Overload(
+				"base64_raw_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(base64RawEncode),
+			),
+		),
+
+		cel.Function("base64_raw_decode",
+			cel.MemberOverload(
+				"string_base64_raw_decode",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(base64RawDecode),
+			),
+			cel.Overload(
+				"base64_raw_decode_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(base64RawDecode),
+			),
+		),
+
+		cel.Function("hex",
+			cel.MemberOverload(
+				"bytes_hex",
+				[]*cel.Type{cel.BytesType},
+				cel.StringType,
+				cel.UnaryBinding(hexEncode),
+			),
+			cel.Overload(
+				"hex_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.StringType,
+				cel.UnaryBinding(hexEncode),
+			),
+			cel.MemberOverload(
+				"string_hex",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(hexEncode),
+			),
+			cel.Overload(
+				"hex_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(hexEncode),
+			),
+		),
+
+		cel.Function("md5",
+			cel.MemberOverload(
+				"bytes_md5",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(md5Hash),
+			),
+			cel.Overload(
+				"md5_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(md5Hash),
+			),
+			cel.MemberOverload(
+				"string_md5",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(md5Hash),
+			),
+			cel.Overload(
+				"md5_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(md5Hash),
+			),
+		),
+
+		cel.Function("sha1",
+			cel.MemberOverload(
+				"bytes_sha1",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(sha1Hash),
+			),
+			cel.Overload(
+				"sha1_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(sha1Hash),
+			),
+			cel.MemberOverload(
+				"string_sha1",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(sha1Hash),
+			),
+			cel.Overload(
+				"sha1_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(sha1Hash),
+			),
+		),
+
+		cel.Function("sha256",
+			cel.MemberOverload(
+				"bytes_sha256",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(sha256Hash),
+			),
+			cel.Overload(
+				"sha256_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(sha256Hash),
+			),
+			cel.MemberOverload(
+				"string_sha256",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(sha256Hash),
+			),
+			cel.Overload(
+				"sha256_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(sha256Hash),
+			),
+		),
+
+		cel.Function("hmac",
+			cel.MemberOverload(
+				"bytes_hmac_string_bytes",
+				[]*cel.Type{cel.BytesType, cel.StringType, cel.BytesType},
+				cel.BytesType,
+				cel.FunctionBinding(hmacHash),
+			),
+			cel.Overload(
+				"hmac_bytes_string_bytes",
+				[]*cel.Type{cel.BytesType, cel.StringType, cel.BytesType},
+				cel.BytesType,
+				cel.FunctionBinding(hmacHash),
+			),
+			cel.MemberOverload(
+				"string_hmac_string_bytes",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
+				cel.BytesType,
+				cel.FunctionBinding(hmacHash),
+			),
+			cel.Overload(
+				"hmac_string_string_bytes",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
+				cel.BytesType,
+				cel.FunctionBinding(hmacHash),
+			),
+		),
+
+		cel.Function("uuid",
+			cel.Overload(
+				"uuid_string",
+				nil,
+				cel.StringType,
+				cel.FunctionBinding(uuidString),
 			),
 		),
 	}
 }
 
-func (cryptoLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "base64_bytes",
-				Unary:    base64Encode,
-			},
-			&functions.Overload{
-				Operator: "bytes_base64",
-				Unary:    base64Encode,
-			},
-			&functions.Overload{
-				Operator: "base64_string",
-				Unary:    base64Encode,
-			},
-			&functions.Overload{
-				Operator: "string_base64",
-				Unary:    base64Encode,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "base64_decode_string",
-				Unary:    base64Decode,
-			},
-			&functions.Overload{
-				Operator: "string_base64_decode",
-				Unary:    base64Decode,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "base64_raw_bytes",
-				Unary:    base64RawEncode,
-			},
-			&functions.Overload{
-				Operator: "bytes_base64_raw",
-				Unary:    base64RawEncode,
-			},
-			&functions.Overload{
-				Operator: "base64_raw_string",
-				Unary:    base64RawEncode,
-			},
-			&functions.Overload{
-				Operator: "string_base64_raw",
-				Unary:    base64RawEncode,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "base64_raw_decode_string",
-				Unary:    base64RawDecode,
-			},
-			&functions.Overload{
-				Operator: "string_base64_raw_decode",
-				Unary:    base64RawDecode,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "hex_bytes",
-				Unary:    hexEncode,
-			},
-			&functions.Overload{
-				Operator: "bytes_hex",
-				Unary:    hexEncode,
-			},
-			&functions.Overload{
-				Operator: "hex_string",
-				Unary:    hexEncode,
-			},
-			&functions.Overload{
-				Operator: "string_hex",
-				Unary:    hexEncode,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "md5_bytes",
-				Unary:    md5Hash,
-			},
-			&functions.Overload{
-				Operator: "bytes_md5",
-				Unary:    md5Hash,
-			},
-			&functions.Overload{
-				Operator: "md5_string",
-				Unary:    md5Hash,
-			},
-			&functions.Overload{
-				Operator: "string_md5",
-				Unary:    md5Hash,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "sha1_bytes",
-				Unary:    sha1Hash,
-			},
-			&functions.Overload{
-				Operator: "bytes_sha1",
-				Unary:    sha1Hash,
-			},
-			&functions.Overload{
-				Operator: "sha1_string",
-				Unary:    sha1Hash,
-			},
-			&functions.Overload{
-				Operator: "string_sha1",
-				Unary:    sha1Hash,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "sha256_bytes",
-				Unary:    sha256Hash,
-			},
-			&functions.Overload{
-				Operator: "bytes_sha256",
-				Unary:    sha256Hash,
-			},
-			&functions.Overload{
-				Operator: "sha256_string",
-				Unary:    sha256Hash,
-			},
-			&functions.Overload{
-				Operator: "string_sha256",
-				Unary:    sha256Hash,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "hmac_bytes_string_bytes",
-				Function: hmacHash,
-			},
-			&functions.Overload{
-				Operator: "bytes_hmac_string_bytes",
-				Function: hmacHash,
-			},
-			&functions.Overload{
-				Operator: "hmac_string_string_bytes",
-				Function: hmacHash,
-			},
-			&functions.Overload{
-				Operator: "string_hmac_string_bytes",
-				Function: hmacHash,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "uuid_string",
-				Function: uuidString,
-			},
-		),
-	}
-}
+func (cryptoLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func base64Encode(val ref.Val) ref.Val {
 	switch val := val.(type) {

@@ -22,11 +22,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Strings returns a cel.EnvOption to configure extended functions for
@@ -95,495 +92,266 @@ func Strings() cel.EnvOption {
 
 type stringLib struct{}
 
-func (stringLib) CompileOptions() []cel.EnvOption {
+func (l stringLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("compare",
-				decls.NewInstanceOverload(
-					"string_compare_string_int",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Int,
-				),
+		cel.Function("compare",
+			cel.MemberOverload(
+				"string_compare_string_int",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.IntType,
+				cel.BinaryBinding(l.compare),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("contains_substr", // required to disambiguate from regexp.contains.
-				decls.NewInstanceOverload(
-					"string_contains_substr_string_bool",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Bool,
-				),
+		cel.Function("contains_substr" /* required to disambiguate from regexp.contains.*/, cel.MemberOverload(
+			"string_contains_substr_string_bool",
+			[]*cel.Type{cel.StringType, cel.StringType},
+			cel.BoolType,
+			cel.BinaryBinding(l.contains),
+		)),
+		cel.Function("contains_any",
+			cel.MemberOverload(
+				"string_contains_any_string_bool",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(l.containsAny),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("contains_any",
-				decls.NewInstanceOverload(
-					"string_contains_any_string_bool",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Bool,
-				),
+		cel.Function("count",
+			cel.MemberOverload(
+				"string_count_string_int",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.IntType,
+				cel.BinaryBinding(l.count),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("count",
-				decls.NewInstanceOverload(
-					"string_count_string_int",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Int,
-				),
+		cel.Function("equal_fold",
+			cel.MemberOverload(
+				"string_equal_fold_string_bool",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(l.equalFold),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("equal_fold",
-				decls.NewInstanceOverload(
-					"string_equal_fold_string_bool",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Bool,
-				),
+		cel.Function("fields",
+			cel.MemberOverload(
+				"string_fields_list_string",
+				[]*cel.Type{cel.StringType},
+				listString,
+				cel.UnaryBinding(l.fields),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("fields",
-				decls.NewInstanceOverload(
-					"string_fields_list_string",
-					[]*expr.Type{decls.String},
-					listString,
-				),
+		cel.Function("has_prefix",
+			cel.MemberOverload(
+				"string_has_prefix_string_bool",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(l.hasPrefix),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("has_prefix",
-				decls.NewInstanceOverload(
-					"string_has_prefix_string_bool",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Bool,
-				),
+		cel.Function("has_suffix",
+			cel.MemberOverload(
+				"string_has_suffix_string_bool",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(l.hasSuffix),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("has_suffix",
-				decls.NewInstanceOverload(
-					"string_has_suffix_string_bool",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Bool,
-				),
+		cel.Function("index",
+			cel.MemberOverload(
+				"string_index_string_int",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.IntType,
+				cel.BinaryBinding(l.index),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("index",
-				decls.NewInstanceOverload(
-					"string_index_string_int",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Int,
-				),
+		cel.Function("index_any",
+			cel.MemberOverload(
+				"string_index_any_string_int",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.IntType,
+				cel.BinaryBinding(l.indexAny),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("index_any",
-				decls.NewInstanceOverload(
-					"string_index_any_string_int",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Int,
-				),
+		cel.Function("join",
+			cel.MemberOverload(
+				"list_string_join_string_string",
+				[]*cel.Type{listString, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.join),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("join",
-				decls.NewInstanceOverload(
-					"list_string_join_string_string",
-					[]*expr.Type{listString, decls.String},
-					decls.String,
-				),
+		cel.Function("last_index",
+			cel.MemberOverload(
+				"string_last_index_string_int",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.IntType,
+				cel.BinaryBinding(l.lastIndex),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("last_index",
-				decls.NewInstanceOverload(
-					"string_last_index_string_int",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Int,
-				),
+		cel.Function("last_index_any",
+			cel.MemberOverload(
+				"string_last_index_any_string_int",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.IntType,
+				cel.BinaryBinding(l.lastIndexAny),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("last_index_any",
-				decls.NewInstanceOverload(
-					"string_last_index_any_string_int",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Int,
-				),
+		cel.Function("repeat",
+			cel.MemberOverload(
+				"string_repeat_int_string",
+				[]*cel.Type{cel.StringType, cel.IntType},
+				cel.StringType,
+				cel.BinaryBinding(l.repeat),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("repeat",
-				decls.NewInstanceOverload(
-					"string_repeat_int_string",
-					[]*expr.Type{decls.String, decls.Int},
-					decls.String,
-				),
+		cel.Function("replace",
+			cel.MemberOverload(
+				"string_replace_string_string_int_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType, cel.IntType},
+				cel.StringType,
+				cel.FunctionBinding(l.replace),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("replace",
-				decls.NewInstanceOverload(
-					"string_replace_string_string_int_string",
-					[]*expr.Type{decls.String, decls.String, decls.String, decls.Int},
-					decls.String,
-				),
+		cel.Function("replace_all",
+			cel.MemberOverload(
+				"string_replace_all_string_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType},
+				cel.StringType,
+				cel.FunctionBinding(l.replaceAll),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("replace_all",
-				decls.NewInstanceOverload(
-					"string_replace_all_string_string_string",
-					[]*expr.Type{decls.String, decls.String, decls.String},
-					decls.String,
-				),
+		cel.Function("split",
+			cel.MemberOverload(
+				"string_split_string_list_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				listString,
+				cel.BinaryBinding(l.split),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("split",
-				decls.NewInstanceOverload(
-					"string_split_string_list_string",
-					[]*expr.Type{decls.String, decls.String},
-					listString,
-				),
+		cel.Function("split_after",
+			cel.MemberOverload(
+				"string_split_after_string_list_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				listString,
+				cel.BinaryBinding(l.splitAfter),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("split_after",
-				decls.NewInstanceOverload(
-					"string_split_after_string_list_string",
-					[]*expr.Type{decls.String, decls.String},
-					listString,
-				),
+		cel.Function("split_after_n",
+			cel.MemberOverload(
+				"string_split_after_n_string_int_list_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.IntType},
+				listString,
+				cel.FunctionBinding(l.splitAfterN),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("split_after_n",
-				decls.NewInstanceOverload(
-					"string_split_after_n_string_int_list_string",
-					[]*expr.Type{decls.String, decls.String, decls.Int},
-					listString,
-				),
+		cel.Function("split_n",
+			cel.MemberOverload(
+				"string_split_n_string_int_list_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.IntType},
+				listString,
+				cel.FunctionBinding(l.splitN),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("split_n",
-				decls.NewInstanceOverload(
-					"string_split_n_string_int_list_string",
-					[]*expr.Type{decls.String, decls.String, decls.Int},
-					listString,
-				),
+		cel.Function("substring",
+			cel.MemberOverload(
+				"string_substring_int_int_string",
+				[]*cel.Type{cel.StringType, cel.IntType, cel.IntType},
+				cel.StringType,
+				cel.FunctionBinding(l.substring),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("substring",
-				decls.NewInstanceOverload(
-					"string_substring_int_int_string",
-					[]*expr.Type{decls.String, decls.Int, decls.Int},
-					decls.String,
-				),
+		cel.Function("to_lower",
+			cel.MemberOverload(
+				"string_to_lower_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(l.toLower),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("to_lower",
-				decls.NewInstanceOverload(
-					"string_to_lower_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+		cel.Function("to_title",
+			cel.MemberOverload(
+				"string_to_title_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(l.toTitle),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("to_title",
-				decls.NewInstanceOverload(
-					"string_to_title_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+		cel.Function("to_upper",
+			cel.MemberOverload(
+				"string_to_upper_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(l.toUpper),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("to_upper",
-				decls.NewInstanceOverload(
-					"string_to_upper_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+		cel.Function("to_valid_utf8",
+			cel.MemberOverload(
+				"bytes_to_valid_utf8_string_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.toValidUTF8),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("to_valid_utf8",
-				decls.NewInstanceOverload(
-					"bytes_to_valid_utf8_string_string",
-					[]*expr.Type{decls.Bytes, decls.String},
-					decls.String,
-				),
+		cel.Function("trim",
+			cel.MemberOverload(
+				"string_trim_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.trim),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("trim",
-				decls.NewInstanceOverload(
-					"string_trim_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.String,
-				),
+		cel.Function("trim_left",
+			cel.MemberOverload(
+				"string_trim_left_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.trimLeft),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("trim_left",
-				decls.NewInstanceOverload(
-					"string_trim_left_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.String,
-				),
+		cel.Function("trim_prefix",
+			cel.MemberOverload(
+				"string_trim_prefix_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.trimPrefix),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("trim_prefix",
-				decls.NewInstanceOverload(
-					"string_trim_prefix_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.String,
-				),
+		cel.Function("trim_right",
+			cel.MemberOverload(
+				"string_trim_right_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.trimRight),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("trim_right",
-				decls.NewInstanceOverload(
-					"string_trim_right_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.String,
-				),
+		cel.Function("trim_space",
+			cel.MemberOverload(
+				"string_trim_space_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(l.trimSpace),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("trim_space",
-				decls.NewInstanceOverload(
-					"string_trim_space_string",
-					[]*expr.Type{decls.String},
-					decls.String,
-				),
+		cel.Function("trim_suffix",
+			cel.MemberOverload(
+				"string_trim_suffix_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(l.trimSuffix),
 			),
 		),
-		cel.Declarations(
-			decls.NewFunction("trim_suffix",
-				decls.NewInstanceOverload(
-					"string_trim_suffix_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.String,
-				),
-			),
-		),
-		cel.Declarations(
-			decls.NewFunction("valid_utf8",
-				decls.NewInstanceOverload(
-					"bytes_valid_utf8_bool",
-					[]*expr.Type{decls.Bytes},
-					decls.Bool,
-				),
+		cel.Function("valid_utf8",
+			cel.MemberOverload(
+				"bytes_valid_utf8_bool",
+				[]*cel.Type{cel.BytesType},
+				cel.BoolType,
+				cel.UnaryBinding(l.validString),
 			),
 		),
 	}
 }
 
-func (l stringLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_compare_string_int",
-				Binary:   l.compare,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_contains_substr_string_bool",
-				Binary:   l.contains,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_contains_any_string_bool",
-				Binary:   l.containsAny,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_count_string_int",
-				Binary:   l.count,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_equal_fold_string_bool",
-				Binary:   l.equalFold,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_fields_list_string",
-				Unary:    l.fields,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_has_prefix_string_bool",
-				Binary:   l.hasPrefix,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_has_suffix_string_bool",
-				Binary:   l.hasSuffix,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_index_string_int",
-				Binary:   l.index,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_index_any_string_int",
-				Binary:   l.indexAny,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "list_string_join_string_string",
-				Binary:   l.join,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_last_index_string_int",
-				Binary:   l.lastIndex,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_last_index_any_string_int",
-				Binary:   l.lastIndexAny,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_repeat_int_string",
-				Binary:   l.repeat,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_replace_string_string_int_string",
-				Function: l.replace,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_replace_all_string_string_string",
-				Function: l.replaceAll,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_split_string_list_string",
-				Binary:   l.split,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_split_after_string_list_string",
-				Binary:   l.splitAfter,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_split_after_n_string_int_list_string",
-				Function: l.splitAfterN,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_split_n_string_int_list_string",
-				Function: l.splitN,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_substring_int_int_string",
-				Function: l.substring,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_to_lower_string",
-				Unary:    l.toLower,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_to_title_string",
-				Unary:    l.toTitle,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_to_upper_string",
-				Unary:    l.toUpper,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "bytes_to_valid_utf8_string_string",
-				Binary:   l.toValidUTF8,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_trim_string_string",
-				Binary:   l.trim,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_trim_left_string_string",
-				Binary:   l.trimLeft,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_trim_prefix_string_string",
-				Binary:   l.trimPrefix,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_trim_right_string_string",
-				Binary:   l.trimRight,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_trim_space_string",
-				Unary:    l.trimSpace,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_trim_suffix_string_string",
-				Binary:   l.trimSuffix,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "bytes_valid_utf8_bool",
-				Unary:    l.validString,
-			},
-		),
-	}
-}
+func (stringLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (l stringLib) compare(arg0, arg1 ref.Val) ref.Val {
 	a, ok := arg0.(types.String)

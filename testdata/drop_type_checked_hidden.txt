@@ -1,0 +1,12 @@
+mito -data state.json -use all src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{"a":{"b":1,"c":2},"d":{}}
+-- src.cel --
+[state["a"]].drop("c")[0]
+-- want.txt --
+{
+	"b": 1
+}

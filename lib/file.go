@@ -24,11 +24,8 @@ import (
 	"sort"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // File returns a cel.EnvOption to configure extended functions for reading files.
@@ -110,52 +107,34 @@ type fileLib struct {
 	transforms map[string]interface{}
 }
 
-func (fileLib) CompileOptions() []cel.EnvOption {
+func (l fileLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("dir",
-				decls.NewOverload(
-					"dir_string",
-					[]*expr.Type{decls.String},
-					decls.NewListType(decls.NewMapType(decls.String, decls.Dyn)),
-				),
+		cel.Function("dir",
+			cel.Overload(
+				"dir_string",
+				[]*cel.Type{cel.StringType},
+				cel.ListType(mapStringDyn),
+				cel.UnaryBinding(readDir),
 			),
-			decls.NewFunction("file",
-				decls.NewOverload(
-					"file_string",
-					[]*expr.Type{decls.String},
-					decls.Bytes,
-				),
-				decls.NewOverload(
-					"file_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Dyn,
-				),
+		),
+		cel.Function("file",
+			cel.Overload(
+				"file_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(readFile),
+			),
+			cel.Overload(
+				"file_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(l.readMIMEFile),
 			),
 		),
 	}
 }
 
-func (l fileLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "dir_string",
-				Unary:    readDir,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "file_string",
-				Unary:    readFile,
-			},
-			&functions.Overload{
-				Operator: "file_string_string",
-				Binary:   l.readMIMEFile,
-			},
-		),
-	}
-}
+func (fileLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func readDir(arg ref.Val) ref.Val {
 	path, ok := arg.(types.String)

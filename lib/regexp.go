@@ -21,11 +21,8 @@ import (
 	"regexp"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Regexp returns a cel.EnvOption to configure extended functions for
@@ -122,98 +119,58 @@ type regexpLib map[string]*regexp.Regexp
 
 func (l regexpLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("re_match",
-				decls.NewInstanceOverload(
-					"typeV_re_match_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Bool,
-				),
+		cel.Function("re_match",
+			cel.MemberOverload(
+				"typeV_re_match_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(l.match),
 			),
-			decls.NewFunction("re_find",
-				decls.NewParameterizedInstanceOverload(
-					"typeV_re_find_string",
-					[]*expr.Type{typeV, decls.String},
-					typeV,
-					[]string{"V"},
-				),
+		),
+		cel.Function("re_find",
+			cel.MemberOverload(
+				"typeV_re_find_string",
+				[]*cel.Type{typeV, cel.StringType},
+				typeV,
+				cel.BinaryBinding(l.find),
 			),
-			decls.NewFunction("re_find_all",
-				decls.NewParameterizedInstanceOverload(
-					"typeV_re_find_all_string",
-					[]*expr.Type{typeV, decls.String},
-					decls.NewListType(typeV),
-					[]string{"V"},
-				),
+		),
+		cel.Function("re_find_all",
+			cel.MemberOverload(
+				"typeV_re_find_all_string",
+				[]*cel.Type{typeV, cel.StringType},
+				listV,
+				cel.BinaryBinding(l.findAll),
 			),
-			decls.NewFunction("re_find_submatch",
-				decls.NewParameterizedInstanceOverload(
-					"typeV_re_find_submatch_string",
-					[]*expr.Type{typeV, decls.String},
-					decls.NewListType(typeV),
-					[]string{"V"},
-				),
+		),
+		cel.Function("re_find_submatch",
+			cel.MemberOverload(
+				"typeV_re_find_submatch_string",
+				[]*cel.Type{typeV, cel.StringType},
+				typeV,
+				cel.BinaryBinding(l.findSubmatch),
 			),
-			decls.NewFunction("re_find_all_submatch",
-				decls.NewParameterizedInstanceOverload(
-					"typeV_re_find_all_submatch_string",
-					[]*expr.Type{typeV, decls.String},
-					decls.NewListType(decls.NewListType(typeV)),
-					[]string{"V"},
-				),
+		),
+		cel.Function("re_find_all_submatch",
+			cel.MemberOverload(
+				"typeV_re_find_all_submatch_string",
+				[]*cel.Type{typeV, cel.StringType},
+				listV,
+				cel.BinaryBinding(l.findAllSubmatch),
 			),
-			decls.NewFunction("re_replace_all",
-				decls.NewParameterizedInstanceOverload(
-					"typeV_re_replace_all_string_dyn",
-					[]*expr.Type{typeV, decls.String, typeV},
-					typeV,
-					[]string{"V"},
-				),
+		),
+		cel.Function("re_replace_all",
+			cel.MemberOverload(
+				"typeV_re_replace_all_string_dyn",
+				[]*cel.Type{typeV, cel.StringType, typeV},
+				typeV,
+				cel.FunctionBinding(l.replaceAll),
 			),
 		),
 	}
 }
 
-func (l regexpLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "typeV_re_match_string",
-				Binary:   l.match,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "typeV_re_find_string",
-				Binary:   l.find,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "typeV_re_find_all_string",
-				Binary:   l.findAll,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "typeV_re_find_submatch_string",
-				Binary:   l.findSubmatch,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "typeV_re_find_all_submatch_string",
-				Binary:   l.findAllSubmatch,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "typeV_re_replace_all_string_dyn",
-				Function: l.replaceAll,
-			},
-		),
-	}
-}
+func (regexpLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (l regexpLib) match(arg1, arg2 ref.Val) ref.Val {
 	patName, ok := arg2.(types.String)

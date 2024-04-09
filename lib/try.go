@@ -21,11 +21,8 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Try returns a cel.EnvOption to configure extended functions for allowing
@@ -65,53 +62,35 @@ type tryLib struct{}
 
 func (tryLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("try",
-				decls.NewOverload(
-					"try_dyn",
-					[]*expr.Type{decls.Dyn},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"try_dyn_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Dyn,
-				),
+		cel.Function("try",
+			cel.Overload(
+				"try_dyn",
+				[]*cel.Type{cel.DynType},
+				cel.DynType,
+				cel.UnaryBinding(try),
+				cel.OverloadIsNonStrict(),
 			),
-			decls.NewFunction("is_error",
-				decls.NewOverload(
-					"is_error_dyn",
-					[]*expr.Type{decls.Dyn},
-					decls.Bool,
-				),
+			cel.Overload(
+				"try_dyn_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(tryMessage),
+				cel.OverloadIsNonStrict(),
+			),
+		),
+		cel.Function("is_error",
+			cel.Overload(
+				"is_error_dyn",
+				[]*cel.Type{cel.DynType},
+				cel.BoolType,
+				cel.UnaryBinding(isError),
+				cel.OverloadIsNonStrict(),
 			),
 		),
 	}
 }
 
-func (tryLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator:  "try_dyn",
-				Unary:     try,
-				NonStrict: true,
-			},
-			&functions.Overload{
-				Operator:  "try_dyn_string",
-				Binary:    tryMessage,
-				NonStrict: true,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator:  "is_error_dyn",
-				Unary:     isError,
-				NonStrict: true,
-			},
-		),
-	}
-}
+func (tryLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func try(arg ref.Val) ref.Val {
 	if types.IsError(arg) {

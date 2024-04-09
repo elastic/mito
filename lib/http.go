@@ -29,13 +29,10 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/interpreter/functions"
 	"golang.org/x/time/rate"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // HTTP returns a cel.EnvOption to configure extended functions for HTTP
@@ -312,209 +309,139 @@ type BasicAuth struct {
 	Username, Password string
 }
 
-func (httpLib) CompileOptions() []cel.EnvOption {
+func (l httpLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("head",
-				decls.NewOverload(
-					"head_string",
-					[]*expr.Type{decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		cel.Function("head",
+			cel.Overload(
+				"head_string",
+				[]*cel.Type{cel.StringType},
+				mapStringDyn,
+				cel.UnaryBinding(l.doHead),
 			),
-			decls.NewFunction("get",
-				decls.NewOverload(
-					"get_string",
-					[]*expr.Type{decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		),
+
+		cel.Function("get",
+			cel.Overload(
+				"get_string",
+				[]*cel.Type{cel.StringType},
+				mapStringDyn,
+				cel.UnaryBinding(l.doGet),
 			),
-			decls.NewFunction("get_request",
-				decls.NewOverload(
-					"get_request_string",
-					[]*expr.Type{decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		),
+		cel.Function("get_request",
+			cel.Overload(
+				"get_request_string",
+				[]*cel.Type{cel.StringType},
+				mapStringDyn,
+				cel.UnaryBinding(newGetRequest),
 			),
-			decls.NewFunction("post",
-				decls.NewOverload(
-					"post_string_string_bytes",
-					[]*expr.Type{decls.String, decls.String, decls.Bytes},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
-				decls.NewOverload(
-					"post_string_string_string",
-					[]*expr.Type{decls.String, decls.String, decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		),
+
+		cel.Function("post",
+			cel.Overload(
+				"post_string_string_bytes",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
+				mapStringDyn,
+				cel.FunctionBinding(l.doPost),
 			),
-			decls.NewFunction("post_request",
-				decls.NewOverload(
-					"post_request_string_string_bytes",
-					[]*expr.Type{decls.String, decls.String, decls.Bytes},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
-				decls.NewOverload(
-					"post_request_string_string_string",
-					[]*expr.Type{decls.String, decls.String, decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+			cel.Overload(
+				"post_string_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType},
+				mapStringDyn,
+				cel.FunctionBinding(l.doPost),
 			),
-			decls.NewFunction("request",
-				decls.NewOverload(
-					"request_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
-				decls.NewOverload(
-					"request_string_string_bytes",
-					[]*expr.Type{decls.String, decls.String, decls.Bytes},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
-				decls.NewOverload(
-					"request_string_string_string",
-					[]*expr.Type{decls.String, decls.String, decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		),
+		cel.Function("post_request",
+			cel.Overload(
+				"post_request_string_string_bytes",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
+				mapStringDyn,
+				cel.FunctionBinding(newPostRequest),
 			),
-			decls.NewFunction("basic_authentication",
-				decls.NewInstanceOverload(
-					"map_basic_authentication_string_string",
-					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn), decls.String, decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+			cel.Overload(
+				"post_request_string_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType},
+				mapStringDyn,
+				cel.FunctionBinding(newPostRequest),
 			),
-			decls.NewFunction("do_request",
-				decls.NewInstanceOverload(
-					"map_do_request",
-					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn)},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+		),
+
+		cel.Function("request",
+			cel.Overload(
+				"request_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				mapStringDyn,
+				cel.BinaryBinding(newRequest),
 			),
-			decls.NewFunction("parse_url",
-				decls.NewInstanceOverload(
-					"string_parse_url",
-					[]*expr.Type{decls.String},
-					decls.NewMapType(decls.String, decls.Dyn),
-				),
+			cel.Overload(
+				"request_string_string_bytes",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
+				mapStringDyn,
+				cel.FunctionBinding(newRequestBody),
 			),
-			decls.NewFunction("format_url",
-				decls.NewInstanceOverload(
-					"map_format_url",
-					[]*expr.Type{decls.NewMapType(decls.String, decls.Dyn)},
-					decls.String,
-				),
+			cel.Overload(
+				"request_string_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType},
+				mapStringDyn,
+				cel.FunctionBinding(newRequestBody),
 			),
-			decls.NewFunction("parse_query",
-				decls.NewInstanceOverload(
-					"string_parse_query",
-					[]*expr.Type{decls.String},
-					decls.NewMapType(decls.String, decls.NewListType(decls.String)),
-				),
+		),
+
+		cel.Function("do_request",
+			cel.MemberOverload(
+				"map_do_request",
+				[]*cel.Type{mapStringDyn},
+				mapStringDyn,
+				cel.UnaryBinding(l.doRequest),
 			),
-			decls.NewFunction("format_query",
-				decls.NewInstanceOverload(
-					"map_format_query",
-					[]*expr.Type{decls.NewMapType(decls.String, decls.NewListType(decls.String))},
-					decls.String,
-				),
+		),
+
+		cel.Function("basic_authentication",
+			cel.MemberOverload(
+				"map_basic_authentication_string_string",
+				[]*cel.Type{mapStringDyn, cel.StringType, cel.StringType},
+				mapStringDyn,
+				cel.FunctionBinding(l.basicAuthentication),
+			),
+		),
+
+		cel.Function("parse_url",
+			cel.MemberOverload(
+				"string_parse_url",
+				[]*cel.Type{cel.StringType},
+				mapStringDyn,
+				cel.UnaryBinding(parseURL),
+			),
+		),
+		cel.Function("format_url",
+			cel.MemberOverload(
+				"map_format_url",
+				[]*cel.Type{mapStringDyn},
+				cel.StringType,
+				cel.UnaryBinding(formatURL),
+			),
+		),
+
+		cel.Function("parse_query",
+			cel.MemberOverload(
+				"string_parse_query",
+				[]*cel.Type{cel.StringType},
+				mapStringDyn,
+				cel.UnaryBinding(parseQuery),
+			),
+		),
+		cel.Function("format_query",
+			cel.MemberOverload(
+				"map_format_query",
+				[]*cel.Type{mapStringDyn},
+				cel.StringType,
+				cel.UnaryBinding(formatQuery),
 			),
 		),
 	}
 }
 
-func (l httpLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "head_string",
-				Unary:    l.doHead,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "get_string",
-				Unary:    l.doGet,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "get_request_string",
-				Unary:    newGetRequest,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "post_string_string_bytes",
-				Function: l.doPost,
-			},
-			&functions.Overload{
-				Operator: "post_string_string_string",
-				Function: l.doPost,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "post_request_string_string_bytes",
-				Function: newPostRequest,
-			},
-			&functions.Overload{
-				Operator: "post_request_string_string_string",
-				Function: newPostRequest,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "request_string_string",
-				Binary:   newRequest,
-			},
-			&functions.Overload{
-				Operator: "request_string_string_bytes",
-				Function: newRequestBody,
-			},
-			&functions.Overload{
-				Operator: "request_string_string_string",
-				Function: newRequestBody,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_basic_authentication_string_string",
-				Function: l.basicAuthentication,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_do_request",
-				Unary:    l.doRequest,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_parse_url",
-				Unary:    parseURL,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_format_url",
-				Unary:    formatURL,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "string_parse_query",
-				Unary:    parseQuery,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_format_query",
-				Unary:    formatQuery,
-			},
-		),
-	}
-}
+func (httpLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (l httpLib) doHead(arg ref.Val) ref.Val {
 	url, ok := arg.(types.String)

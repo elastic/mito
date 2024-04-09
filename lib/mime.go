@@ -27,11 +27,8 @@ import (
 	"os"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // MIME returns a cel.EnvOption to configure extended functions for reading files.
@@ -62,30 +59,20 @@ type mimeLib struct {
 	transforms map[string]interface{}
 }
 
-func (mimeLib) CompileOptions() []cel.EnvOption {
+func (l mimeLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("mime",
-				decls.NewInstanceOverload(
-					"bytes_mime_string",
-					[]*expr.Type{decls.Bytes, decls.String},
-					decls.Dyn,
-				),
+		cel.Function("mime",
+			cel.MemberOverload(
+				"bytes_mime_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(l.transformMIME),
 			),
 		),
 	}
 }
 
-func (l mimeLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "bytes_mime_string",
-				Binary:   l.transformMIME,
-			},
-		),
-	}
-}
+func (mimeLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (l mimeLib) transformMIME(arg0, arg1 ref.Val) ref.Val {
 	input, ok := arg0.(types.Bytes)
