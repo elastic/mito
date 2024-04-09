@@ -23,11 +23,8 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 
 	"github.com/elastic/mito/lib/xml"
 )
@@ -61,7 +58,7 @@ import (
 //	b"<?xml vers... ...>".decode_xml()   // return { ... }
 //	"<?xml vers... ...>".decode_xml("xsd")   // return { ... }
 //	b"<?xml vers... ...>".decode_xml("xsd")   // return { ... }
-func XML(adapter ref.TypeAdapter, xsd map[string]string) (cel.EnvOption, error) {
+func XML(adapter types.Adapter, xsd map[string]string) (cel.EnvOption, error) {
 	if adapter == nil {
 		adapter = types.DefaultTypeAdapter
 	}
@@ -77,98 +74,70 @@ func XML(adapter ref.TypeAdapter, xsd map[string]string) (cel.EnvOption, error) 
 }
 
 type xmlLib struct {
-	adapter ref.TypeAdapter
+	adapter types.Adapter
 
 	xsdDetails map[string]map[string]xml.Detail
 }
 
-func (xmlLib) CompileOptions() []cel.EnvOption {
+func (l xmlLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("decode_xml",
-				decls.NewOverload(
-					"decode_xml_string",
-					[]*expr.Type{decls.String},
-					decls.Dyn,
-				),
-				decls.NewInstanceOverload(
-					"string_decode_xml",
-					[]*expr.Type{decls.String},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"decode_xml_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.Dyn,
-				),
-				decls.NewInstanceOverload(
-					"bytes_decode_xml",
-					[]*expr.Type{decls.Bytes},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"decode_xml_string_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Dyn,
-				),
-				decls.NewInstanceOverload(
-					"string_decode_xml_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"decode_xml_bytes_string",
-					[]*expr.Type{decls.Bytes, decls.String},
-					decls.Dyn,
-				),
-				decls.NewInstanceOverload(
-					"bytes_decode_xml_string",
-					[]*expr.Type{decls.Bytes, decls.String},
-					decls.Dyn,
-				),
+		cel.Function("decode_xml",
+			// Without type information.
+			cel.MemberOverload(
+				"string_decode_xml",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeXML),
+			),
+			cel.Overload(
+				"decode_xml_string",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeXML),
+			),
+			cel.MemberOverload(
+				"bytes_decode_xml",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeXML),
+			),
+			cel.Overload(
+				"decode_xml_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeXML),
+			),
+
+			// With type information.
+			cel.MemberOverload(
+				"string_decode_xml_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(l.decodeXMLWithXSD),
+			),
+			cel.Overload(
+				"decode_xml_string_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(l.decodeXMLWithXSD),
+			),
+			cel.MemberOverload(
+				"bytes_decode_xml_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(l.decodeXMLWithXSD),
+			),
+			cel.Overload(
+				"decode_xml_bytes_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(l.decodeXMLWithXSD),
 			),
 		),
 	}
 }
 
-func (l xmlLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "decode_xml_string",
-				Unary:    l.decodeXML,
-			},
-			&functions.Overload{
-				Operator: "decode_xml_bytes",
-				Unary:    l.decodeXML,
-			},
-			&functions.Overload{
-				Operator: "string_decode_xml",
-				Unary:    l.decodeXML,
-			},
-			&functions.Overload{
-				Operator: "bytes_decode_xml",
-				Unary:    l.decodeXML,
-			},
-			&functions.Overload{
-				Operator: "decode_xml_string_string",
-				Binary:   l.decodeXMLWithXSD,
-			},
-			&functions.Overload{
-				Operator: "decode_xml_bytes_string",
-				Binary:   l.decodeXMLWithXSD,
-			},
-			&functions.Overload{
-				Operator: "string_decode_xml_string",
-				Binary:   l.decodeXMLWithXSD,
-			},
-			&functions.Overload{
-				Operator: "bytes_decode_xml_string",
-				Binary:   l.decodeXMLWithXSD,
-			},
-		),
-	}
-}
+func (xmlLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (l xmlLib) decodeXML(arg ref.Val) ref.Val {
 	return l.decodeXMLWithXSD(arg, types.String(""))

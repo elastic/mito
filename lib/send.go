@@ -21,11 +21,8 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Send returns a cel.EnvOption to configure extended functions for sending
@@ -60,78 +57,52 @@ func Send(ch map[string]chan interface{}) cel.EnvOption {
 
 type sendLib map[string]chan interface{}
 
-func (sendLib) CompileOptions() []cel.EnvOption {
+func (ch sendLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("send_refval_to",
-				decls.NewInstanceOverload(
-					"dyn_send_refval_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"send_dyn_refval_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Dyn,
-				),
+		cel.Function("send_refval_to",
+			cel.MemberOverload(
+				"dyn_send_refval_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(ch.sendRefVal),
+				cel.OverloadIsNonStrict(),
 			),
-			decls.NewFunction("send_to",
-				decls.NewInstanceOverload(
-					"dyn_send_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"send_dyn_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Dyn,
-				),
+			cel.Overload(
+				"send_dyn_refval_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(ch.sendRefVal),
+				cel.OverloadIsNonStrict(),
 			),
-			decls.NewFunction("close",
-				decls.NewInstanceOverload(
-					"dyn_close_string",
-					[]*expr.Type{decls.Dyn, decls.String},
-					decls.Bool,
-				),
+		),
+		cel.Function("send_to",
+			cel.MemberOverload(
+				"dyn_send_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(ch.send),
+				cel.OverloadIsNonStrict(),
+			),
+			cel.Overload(
+				"send_dyn_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.DynType,
+				cel.BinaryBinding(ch.send),
+				cel.OverloadIsNonStrict(),
+			),
+		),
+		cel.Function("close",
+			cel.MemberOverload(
+				"dyn_close_string",
+				[]*cel.Type{cel.DynType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(ch.close),
 			),
 		),
 	}
 }
 
-func (ch sendLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator:  "dyn_send_refval_string",
-				Binary:    ch.sendRefVal,
-				NonStrict: true,
-			},
-			&functions.Overload{
-				Operator:  "send_dyn_refval_string",
-				Binary:    ch.sendRefVal,
-				NonStrict: true,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator:  "dyn_send_string",
-				Binary:    ch.send,
-				NonStrict: true,
-			},
-			&functions.Overload{
-				Operator:  "send_dyn_string",
-				Binary:    ch.send,
-				NonStrict: true,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "dyn_close_string",
-				Binary:   ch.close,
-			},
-		),
-	}
-}
+func (sendLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func (ch sendLib) close(_, arg ref.Val) ref.Val {
 	name, ok := arg.(types.String)

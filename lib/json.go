@@ -25,11 +25,8 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // JSON returns a cel.EnvOption to configure extended functions for JSON
@@ -79,7 +76,7 @@ import (
 //
 //	'{"a":1}{"b":2}'.decode_json_stream()   // return [{"a":1}, {"b":2}]
 //	b'{"a":1}{"b":2}'.decode_json_stream()  // return [{"a":1}, {"b":2}]
-func JSON(adapter ref.TypeAdapter) cel.EnvOption {
+func JSON(adapter types.Adapter) cel.EnvOption {
 	if adapter == nil {
 		adapter = types.DefaultTypeAdapter
 	}
@@ -87,122 +84,83 @@ func JSON(adapter ref.TypeAdapter) cel.EnvOption {
 }
 
 type jsonLib struct {
-	adapter ref.TypeAdapter
+	adapter types.Adapter
 }
 
-func (jsonLib) CompileOptions() []cel.EnvOption {
+func (l jsonLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
-		cel.Declarations(
-			decls.NewFunction("encode_json",
-				decls.NewOverload(
-					"encode_json_dyn",
-					[]*expr.Type{decls.Dyn},
-					decls.String,
-				),
-				decls.NewInstanceOverload(
-					"dyn_encode_json",
-					[]*expr.Type{decls.Dyn},
-					decls.String,
-				),
+		cel.Function("encode_json",
+			cel.MemberOverload(
+				"dyn_encode_json",
+				[]*cel.Type{cel.DynType},
+				cel.StringType,
+				cel.UnaryBinding(encodeJSON),
 			),
-			decls.NewFunction("decode_json",
-				decls.NewOverload(
-					"decode_json_string",
-					[]*expr.Type{decls.String},
-					decls.Dyn,
-				),
-				decls.NewInstanceOverload(
-					"string_decode_json",
-					[]*expr.Type{decls.String},
-					decls.Dyn,
-				),
-				decls.NewOverload(
-					"decode_json_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.Dyn,
-				),
-				decls.NewInstanceOverload(
-					"bytes_decode_json",
-					[]*expr.Type{decls.Bytes},
-					decls.Dyn,
-				),
+			cel.Overload(
+				"encode_json_dyn",
+				[]*cel.Type{cel.DynType},
+				cel.StringType,
+				cel.UnaryBinding(encodeJSON),
 			),
-			decls.NewFunction("decode_json_stream",
-				decls.NewOverload(
-					"decode_json_stream_string",
-					[]*expr.Type{decls.String},
-					decls.NewListType(decls.Dyn),
-				),
-				decls.NewInstanceOverload(
-					"string_decode_json_stream",
-					[]*expr.Type{decls.String},
-					decls.NewListType(decls.Dyn),
-				),
-				decls.NewOverload(
-					"decode_json_stream_bytes",
-					[]*expr.Type{decls.Bytes},
-					decls.NewListType(decls.Dyn),
-				),
-				decls.NewInstanceOverload(
-					"bytes_decode_json_stream",
-					[]*expr.Type{decls.Bytes},
-					decls.NewListType(decls.Dyn),
-				),
+		),
+
+		cel.Function("decode_json",
+			cel.MemberOverload(
+				"string_decode_json",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSON),
+			),
+			cel.Overload(
+				"decode_json_string",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSON),
+			),
+			cel.MemberOverload(
+				"bytes_decode_json",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSON),
+			),
+			cel.Overload(
+				"decode_json_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSON),
+			),
+		),
+
+		cel.Function("decode_json_stream",
+			cel.MemberOverload(
+				"string_decode_json_stream",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSONStream),
+			),
+			cel.Overload(
+				"decode_json_stream_string",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSONStream),
+			),
+			cel.MemberOverload(
+				"bytes_decode_json_stream",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSONStream),
+			),
+			cel.Overload(
+				"decode_json_stream_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(l.decodeJSONStream),
 			),
 		),
 	}
 }
 
-func (l jsonLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "encode_json_dyn",
-				Unary:    encodeJSON,
-			},
-			&functions.Overload{
-				Operator: "dyn_encode_json",
-				Unary:    encodeJSON,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "decode_json_string",
-				Unary:    l.decodeJSON,
-			},
-			&functions.Overload{
-				Operator: "decode_json_bytes",
-				Unary:    l.decodeJSON,
-			},
-			&functions.Overload{
-				Operator: "string_decode_json",
-				Unary:    l.decodeJSON,
-			},
-			&functions.Overload{
-				Operator: "bytes_decode_json",
-				Unary:    l.decodeJSON,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "decode_json_stream_string",
-				Unary:    l.decodeJSONStream,
-			},
-			&functions.Overload{
-				Operator: "decode_json_stream_bytes",
-				Unary:    l.decodeJSONStream,
-			},
-			&functions.Overload{
-				Operator: "string_decode_json_stream",
-				Unary:    l.decodeJSONStream,
-			},
-			&functions.Overload{
-				Operator: "bytes_decode_json_stream",
-				Unary:    l.decodeJSONStream,
-			},
-		),
-	}
-}
+func (jsonLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func encodeJSON(val ref.Val) ref.Val {
 	var v interface{}

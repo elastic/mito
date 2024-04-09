@@ -22,7 +22,7 @@ import (
 	"time"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -34,13 +34,14 @@ const OptionalTypesVersion = 1
 
 // Types used in overloads.
 var (
-	typeV        = decls.NewTypeParamType("V")
-	typeK        = decls.NewTypeParamType("K")
-	mapKV        = decls.NewMapType(typeK, typeV)
-	mapStringDyn = decls.NewMapType(decls.String, decls.Dyn)
-	listV        = decls.NewListType(typeV)
-	listK        = decls.NewListType(typeK)
-	listString   = decls.NewListType(decls.String)
+	typeV        = cel.TypeParamType("V")
+	typeK        = cel.TypeParamType("K")
+	mapKV        = cel.MapType(typeK, typeV)
+	mapStringDyn = cel.MapType(cel.StringType, cel.DynType)
+	listV        = cel.ListType(typeV)
+	listK        = cel.ListType(typeK)
+	listDyn      = cel.ListType(cel.DynType)
+	listString   = cel.ListType(cel.StringType)
 )
 
 // Types used for conversion to native.

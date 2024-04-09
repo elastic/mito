@@ -26,8 +26,6 @@ import (
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/interpreter/functions"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Time returns a cel.EnvOption to configure extended functions for
@@ -119,31 +117,37 @@ func (timeLib) CompileOptions() []cel.EnvOption {
 		cel.Declarations(
 			decls.NewVar("now", decls.Dyn),
 			decls.NewVar("time_layout", decls.NewMapType(decls.String, decls.String)),
-			decls.NewFunction("now",
-				decls.NewOverload(
-					"now_void",
-					nil,
-					decls.Timestamp,
-				),
+		),
+		cel.Function("now",
+			cel.Overload(
+				"now_void",
+				nil,
+				cel.TimestampType,
+				cel.FunctionBinding(now),
 			),
-			decls.NewFunction("format",
-				decls.NewInstanceOverload(
-					"timestamp_format_string",
-					[]*expr.Type{decls.Timestamp, decls.String},
-					decls.String,
-				),
+		),
+		cel.Function("format",
+			cel.MemberOverload(
+				"timestamp_format_string",
+				[]*cel.Type{cel.TimestampType, cel.StringType},
+				cel.StringType,
+				cel.BinaryBinding(formatTime),
 			),
-			decls.NewFunction("parse_time",
-				decls.NewInstanceOverload(
-					"string_parse_time_string",
-					[]*expr.Type{decls.String, decls.String},
-					decls.Timestamp,
-				),
-				decls.NewInstanceOverload(
-					"string_parse_time_list_string",
-					[]*expr.Type{decls.String, decls.NewListType(decls.String)},
-					decls.Timestamp,
-				),
+		),
+		cel.Function("parse_time",
+			cel.MemberOverload(
+				"string_parse_time_string",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.TimestampType,
+				cel.BinaryBinding(parseTimeWithLayout),
+			),
+		),
+		cel.Function("parse_time",
+			cel.MemberOverload(
+				"string_parse_time_list_string",
+				[]*cel.Type{cel.StringType, listString},
+				cel.TimestampType,
+				cel.BinaryBinding(parseTimeWithLayouts),
 			),
 		),
 	}
@@ -177,24 +181,6 @@ func (timeLib) ProgramOptions() []cel.ProgramOption {
 				"TimeOnly": "15:04:05",            // time.TimeOnly from future
 			},
 		}),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "now_void",
-				Function: now,
-			},
-			&functions.Overload{
-				Operator: "timestamp_format_string",
-				Binary:   formatTime,
-			},
-			&functions.Overload{
-				Operator: "string_parse_time_string",
-				Binary:   parseTimeWithLayout,
-			},
-			&functions.Overload{
-				Operator: "string_parse_time_list_string",
-				Binary:   parseTimeWithLayouts,
-			},
-		),
 	}
 }
 

@@ -23,16 +23,13 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common"
 	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/operators"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/interpreter/functions"
 	"github.com/google/cel-go/parser"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Collections returns a cel.EnvOption to configure extended functions for
@@ -168,6 +165,18 @@ import (
 //	[[1],[2,3],[[[4]],[5,6]]].flatten()                     // return [1, 2, 3, 4, 5, 6]
 //	[[{"a":1,"b":[10, 11]}],[2,3],[[[4]],[5,6]]].flatten()  // return [{"a":1, "b":[10, 11]}, 2, 3, 4, 5, 6]
 //
+// # Keys
+//
+// Returns a list of keys from a map:
+//
+//	keys(<map<dyn,dyn>>) -> <list<dyn>>
+//	<map<dyn,dyn>>.keys() -> <list<dyn>>
+//
+// Examples:
+//
+//	keys({"a":1, "b":2})   // return ["a", "b"]
+//	{1:"a", 2:"b"}.keys()   // return [1, 2]
+//
 // # Max
 //
 // Returns the maximum value of a list of comparable objects:
@@ -191,6 +200,18 @@ import (
 //
 //	[1,2,3,4,5,6,7].min()  // return 1
 //	min([1,2,3,4,5,6,7])   // return 1
+//
+// # Values
+//
+// Returns a list of values from a map:
+//
+//	values(<map<dyn,dyn>>) -> <list<dyn>>
+//	<map<dyn,dyn>>.values() -> <list<dyn>>
+//
+// Examples:
+//
+//	values({"a":1, "b":2})   // return [1, 2]
+//	{1:"a", 2:"b"}.values()   // return ["a", "b"]
 //
 // # With
 //
@@ -237,30 +258,6 @@ import (
 //
 //	zip(["a", "b"], [1, 2])  // return {"a":1, "b":2}
 //	["a", "b"].zip([1, 2])   // return {"a":1, "b":2}
-//
-// # Keys
-//
-// Returns a list of keys from a map:
-//
-//	keys(<map<dyn,dyn>>) -> <list<dyn>>
-//	<map<dyn,dyn>>.keys() -> <list<dyn>>
-//
-// Examples:
-//
-//	keys({"a":1, "b":2})   // return ["a", "b"]
-//	{1:"a", 2:"b"}.keys()   // return [1, 2]
-//
-// # Values
-//
-// Returns a list of values from a map:
-//
-//	values(<map<dyn,dyn>>) -> <list<dyn>>
-//	<map<dyn,dyn>>.values() -> <list<dyn>>
-//
-// Examples:
-//
-//	values({"a":1, "b":2})   // return [1, 2]
-//	{1:"a", 2:"b"}.values()   // return ["a", "b"]
 func Collections() cel.EnvOption {
 	return cel.Lib(collectionsLib{})
 }
@@ -270,292 +267,190 @@ type collectionsLib struct{}
 func (collectionsLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
 		cel.Macros(parser.NewReceiverMacro("as", 2, makeAs)),
-		cel.Declarations(
-			decls.NewFunction("collate",
-				decls.NewParameterizedInstanceOverload(
-					"list_collate_string",
-					[]*expr.Type{decls.NewListType(decls.Dyn), decls.String},
-					listV,
-					[]string{"V"},
-				),
-				decls.NewParameterizedInstanceOverload(
-					"list_collate_list_string",
-					[]*expr.Type{decls.NewListType(decls.Dyn), decls.NewListType(decls.String)},
-					listV,
-					[]string{"V"},
-				),
-				decls.NewParameterizedInstanceOverload(
-					"map_collate_string",
-					[]*expr.Type{mapStringDyn, decls.String},
-					listV,
-					[]string{"V"},
-				),
-				decls.NewParameterizedInstanceOverload(
-					"map_collate_list_string",
-					[]*expr.Type{mapStringDyn, decls.NewListType(decls.String)},
-					listV,
-					[]string{"V"},
-				),
+
+		cel.Function("collate",
+			cel.MemberOverload(
+				"list_collate_string",
+				[]*cel.Type{listDyn, cel.StringType},
+				listDyn,
+				cel.BinaryBinding(collateFields),
 			),
-			decls.NewFunction("drop",
-				decls.NewInstanceOverload(
-					"list_drop_string",
-					[]*expr.Type{decls.NewListType(decls.Dyn), decls.String},
-					decls.NewListType(decls.Dyn),
-				),
-				decls.NewInstanceOverload(
-					"list_drop_list_string",
-					[]*expr.Type{decls.NewListType(decls.Dyn), decls.NewListType(decls.String)},
-					decls.NewListType(decls.Dyn),
-				),
-				decls.NewInstanceOverload(
-					"map_drop_string",
-					[]*expr.Type{mapKV, decls.String},
-					mapKV,
-				),
-				decls.NewInstanceOverload(
-					"map_drop_list_string",
-					[]*expr.Type{mapKV, decls.NewListType(decls.String)},
-					mapKV,
-				),
+			cel.MemberOverload(
+				"list_collate_list_string",
+				[]*cel.Type{listDyn, listString},
+				listDyn,
+				cel.BinaryBinding(collateFields),
 			),
-			decls.NewFunction("drop_empty",
-				decls.NewInstanceOverload(
-					"list_drop_empty",
-					[]*expr.Type{decls.NewListType(decls.Dyn)},
-					decls.NewListType(decls.Dyn),
-				),
-				decls.NewInstanceOverload(
-					"map_drop_empty",
-					[]*expr.Type{mapKV},
-					mapKV,
-				),
+			cel.MemberOverload(
+				"map_collate_string",
+				[]*cel.Type{mapStringDyn, cel.StringType},
+				listDyn,
+				cel.BinaryBinding(collateFields),
 			),
-			decls.NewFunction("flatten",
-				decls.NewInstanceOverload(
-					"list_flatten",
-					[]*expr.Type{decls.NewListType(decls.Dyn)},
-					decls.NewListType(decls.Dyn),
-				),
+			cel.MemberOverload(
+				"map_collate_list_string",
+				[]*cel.Type{mapStringDyn, listString},
+				listDyn,
+				cel.BinaryBinding(collateFields),
 			),
-			decls.NewFunction("max",
-				decls.NewParameterizedInstanceOverload(
-					"list_max",
-					[]*expr.Type{listV},
-					typeV,
-					[]string{"V"},
-				),
-				decls.NewParameterizedOverload(
-					"max_list",
-					[]*expr.Type{listV},
-					typeV,
-					[]string{"V"},
-				),
+		),
+
+		cel.Function("drop",
+			cel.MemberOverload(
+				"list_drop_string",
+				[]*cel.Type{listV, cel.StringType},
+				listV,
+				cel.BinaryBinding(dropFields),
 			),
-			decls.NewFunction("min",
-				decls.NewParameterizedInstanceOverload(
-					"list_min",
-					[]*expr.Type{listV},
-					typeV,
-					[]string{"V"},
-				),
-				decls.NewParameterizedOverload(
-					"min_list",
-					[]*expr.Type{listV},
-					typeV,
-					[]string{"V"},
-				),
+			cel.MemberOverload(
+				"list_drop_list_string",
+				[]*cel.Type{listV, listString},
+				listV,
+				cel.BinaryBinding(dropFields),
 			),
-			decls.NewFunction("with",
-				decls.NewParameterizedInstanceOverload(
-					"map_with_map",
-					[]*expr.Type{mapKV, mapKV},
-					mapKV,
-					[]string{"K", "V"},
-				),
+			cel.MemberOverload(
+				"map_drop_string",
+				[]*cel.Type{mapKV, cel.StringType},
+				mapKV,
+				cel.BinaryBinding(dropFields),
 			),
-			decls.NewFunction("with_update",
-				decls.NewParameterizedInstanceOverload(
-					"map_with_update_map",
-					[]*expr.Type{mapKV, mapKV},
-					mapKV,
-					[]string{"K", "V"},
-				),
+			cel.MemberOverload(
+				"map_drop_list_string",
+				[]*cel.Type{mapKV, listString},
+				mapKV,
+				cel.BinaryBinding(dropFields),
 			),
-			decls.NewFunction("with_replace",
-				decls.NewParameterizedInstanceOverload(
-					"map_with_replace_map",
-					[]*expr.Type{mapKV, mapKV},
-					mapKV,
-					[]string{"K", "V"},
-				),
+		),
+
+		cel.Function("drop_empty",
+			cel.MemberOverload(
+				"list_drop_empty",
+				[]*cel.Type{listV},
+				listV,
+				cel.UnaryBinding(dropEmpty),
 			),
-			decls.NewFunction("zip",
-				decls.NewParameterizedInstanceOverload(
-					"list_zip",
-					[]*expr.Type{listK, listV},
-					mapKV,
-					[]string{"K", "V"},
-				),
-				decls.NewParameterizedOverload(
-					"zip_list",
-					[]*expr.Type{listK, listV},
-					mapKV,
-					[]string{"K", "V"},
-				),
+			cel.MemberOverload(
+				"map_drop_empty",
+				[]*cel.Type{mapKV},
+				mapKV,
+				cel.UnaryBinding(dropEmpty),
 			),
-			decls.NewFunction("keys",
-				decls.NewParameterizedInstanceOverload(
-					"map_keys",
-					[]*expr.Type{mapKV},
-					listK,
-					[]string{"K"},
-				),
-				decls.NewParameterizedOverload(
-					"keys_map",
-					[]*expr.Type{mapKV},
-					listK,
-					[]string{"K"},
-				),
+		),
+
+		cel.Function("flatten",
+			cel.MemberOverload(
+				"list_flatten",
+				[]*cel.Type{listV},
+				listV,
+				cel.UnaryBinding(flatten),
 			),
-			decls.NewFunction("values",
-				decls.NewParameterizedInstanceOverload(
-					"map_values",
-					[]*expr.Type{mapKV},
-					listV,
-					[]string{"V"},
-				),
-				decls.NewParameterizedOverload(
-					"values_map",
-					[]*expr.Type{mapKV},
-					listV,
-					[]string{"V"},
-				),
+		),
+
+		cel.Function("keys",
+			cel.MemberOverload(
+				"map_keys",
+				[]*cel.Type{mapKV},
+				listK,
+				cel.UnaryBinding(mapKeys),
+			),
+			cel.Overload(
+				"keys_map",
+				[]*cel.Type{mapKV},
+				listK,
+				cel.UnaryBinding(mapKeys),
+			),
+		),
+
+		cel.Function("max",
+			cel.MemberOverload(
+				"list_max",
+				[]*cel.Type{listV},
+				typeV,
+				cel.UnaryBinding(max),
+			),
+			cel.Overload(
+				"max_list",
+				[]*cel.Type{listV},
+				typeV,
+				cel.UnaryBinding(max),
+			),
+		),
+
+		cel.Function("min",
+			cel.MemberOverload(
+				"list_min",
+				[]*cel.Type{listV},
+				typeV,
+				cel.UnaryBinding(min),
+			),
+			cel.Overload(
+				"min_list",
+				[]*cel.Type{listV},
+				typeV,
+				cel.UnaryBinding(min),
+			),
+		),
+
+		cel.Function("values",
+			cel.MemberOverload(
+				"map_values",
+				[]*cel.Type{mapKV},
+				listK,
+				cel.UnaryBinding(mapValues),
+			),
+			cel.Overload(
+				"values_map",
+				[]*cel.Type{mapKV},
+				listK,
+				cel.UnaryBinding(mapValues),
+			),
+		),
+
+		cel.Function("with",
+			cel.MemberOverload(
+				"map_with_map",
+				[]*cel.Type{mapKV, mapKV},
+				mapKV,
+				cel.BinaryBinding(withAll),
+			),
+		),
+
+		cel.Function("with_update",
+			cel.MemberOverload(
+				"map_with_update_map",
+				[]*cel.Type{mapKV, mapKV},
+				mapKV,
+				cel.BinaryBinding(withUpdate),
+			),
+		),
+
+		cel.Function("with_replace",
+			cel.MemberOverload(
+				"map_with_replace_map",
+				[]*cel.Type{mapKV, mapKV},
+				mapKV,
+				cel.BinaryBinding(withReplace),
+			),
+		),
+
+		cel.Function("zip",
+			cel.MemberOverload(
+				"list_zip",
+				[]*cel.Type{listK, listV},
+				mapKV,
+				cel.BinaryBinding(zipLists),
+			),
+			cel.Overload(
+				"zip_list",
+				[]*cel.Type{listK, listV},
+				mapKV,
+				cel.BinaryBinding(zipLists),
 			),
 		),
 	}
 }
 
-func (collectionsLib) ProgramOptions() []cel.ProgramOption {
-	return []cel.ProgramOption{
-		cel.Functions(
-			&functions.Overload{
-				Operator: "list_collate_string",
-				Binary:   collateFields,
-			},
-			&functions.Overload{
-				Operator: "list_collate_list_string",
-				Binary:   collateFields,
-			},
-			&functions.Overload{
-				Operator: "map_collate_string",
-				Binary:   collateFields,
-			},
-			&functions.Overload{
-				Operator: "map_collate_list_string",
-				Binary:   collateFields,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "list_drop_string",
-				Binary:   dropFields,
-			},
-			&functions.Overload{
-				Operator: "list_drop_list_string",
-				Binary:   dropFields,
-			},
-			&functions.Overload{
-				Operator: "map_drop_string",
-				Binary:   dropFields,
-			},
-			&functions.Overload{
-				Operator: "map_drop_list_string",
-				Binary:   dropFields,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "list_drop_empty",
-				Unary:    dropEmpty,
-			},
-			&functions.Overload{
-				Operator: "map_drop_empty",
-				Unary:    dropEmpty,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "list_flatten",
-				Unary:    flatten,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "min_list",
-				Unary:    min,
-			},
-			&functions.Overload{
-				Operator: "list_min",
-				Unary:    min,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "max_list",
-				Unary:    max,
-			},
-			&functions.Overload{
-				Operator: "list_max",
-				Unary:    max,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_with_map",
-				Binary:   withAll,
-			},
-			&functions.Overload{
-				Operator: "map_with_update_map",
-				Binary:   withUpdate,
-			},
-			&functions.Overload{
-				Operator: "map_with_replace_map",
-				Binary:   withReplace,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "zip_list",
-				Binary:   zipLists,
-			},
-			&functions.Overload{
-				Operator: "list_zip",
-				Binary:   zipLists,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_keys",
-				Unary:    mapKeys,
-			},
-			&functions.Overload{
-				Operator: "keys_map",
-				Unary:    mapKeys,
-			},
-		),
-		cel.Functions(
-			&functions.Overload{
-				Operator: "map_values",
-				Unary:    mapValues,
-			},
-			&functions.Overload{
-				Operator: "values_map",
-				Unary:    mapValues,
-			},
-		),
-	}
-}
+func (collectionsLib) ProgramOptions() []cel.ProgramOption { return nil }
 
 func flatten(arg ref.Val) ref.Val {
 	obj := arg
