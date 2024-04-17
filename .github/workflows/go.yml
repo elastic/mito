@@ -23,6 +23,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: govulncheck
+      run: |
+        go run golang.org/x/vuln/cmd/govulncheck@latest
+
     - name: Test
       run: go test ./...
 
