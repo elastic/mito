@@ -208,22 +208,22 @@ import (
 // Returns the receiver's value with the value of the parameter replacing
 // existing fields:
 //
-//	<map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
+//	<map<K,V>>.with_replace(<map<K,V>>) -> <map<K,V>>
 //
 // Examples:
 //
-//	{"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":10, "b":2}
+//	{"a":1, "b":2}.with_replace({"a":10, "c":3})  // return {"a":10, "b":2}
 //
 // # With Update
 //
 // Returns the receiver's value with the value of the parameter updating
 // the map without replacing any existing fields:
 //
-//	<map<K,V>>.with(<map<K,V>>) -> <map<K,V>>
+//	<map<K,V>>.with_update(<map<K,V>>) -> <map<K,V>>
 //
 // Examples:
 //
-//	{"a":1, "b":2}.with({"a":10, "c":3})  // return {"a":1, "b":2, "c":3}
+//	{"a":1, "b":2}.with_update({"a":10, "c":3})  // return {"a":1, "b":2, "c":3}
 //
 // # Zip
 //
