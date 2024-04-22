@@ -103,7 +103,10 @@ import (
 //	    "StampMilli":  time.StampMilli,
 //	    "StampMicro":  time.StampMicro,
 //	    "StampNano":   time.StampNano,
-//	    "HTTP":        http.TimeFormat
+//	    "HTTP":        http.TimeFormat,
+//	    "DateOnly":    time.DateOnly,
+//	    "DateTime":    time.DateTime,
+//	    "TimeOnly":    time.TimeOnly
 //	}
 func Time() cel.EnvOption {
 	return cel.Lib(timeLib{})
@@ -168,6 +171,10 @@ func (timeLib) ProgramOptions() []cel.ProgramOption {
 				"StampMicro":  time.StampMicro,
 				"StampNano":   time.StampNano,
 				"HTTP":        http.TimeFormat,
+				// TODO: Use the constants from time when go1.19 support is dropped.
+				"DateTime": "2006-01-02 15:04:05", // time.DateTime from future
+				"DateOnly": "2006-01-02",          // time.DateOnly from future
+				"TimeOnly": "15:04:05",            // time.TimeOnly from future
 			},
 		}),
 		cel.Functions(

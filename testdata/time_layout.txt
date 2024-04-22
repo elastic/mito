@@ -7,6 +7,8 @@ time_layout
 -- want.txt --
 {
 	"ANSIC": "Mon Jan _2 15:04:05 2006",
+	"DateOnly": "2006-01-02",
+	"DateTime": "2006-01-02 15:04:05",
 	"HTTP": "Mon, 02 Jan 2006 15:04:05 GMT",
 	"Kitchen": "3:04PM",
 	"Layout": "01/02 03:04:05PM '06 -0700",
@@ -22,5 +24,6 @@ time_layout
 	"StampMicro": "Jan _2 15:04:05.000000",
 	"StampMilli": "Jan _2 15:04:05.000",
 	"StampNano": "Jan _2 15:04:05.000000000",
+	"TimeOnly": "15:04:05",
 	"UnixDate": "Mon Jan _2 15:04:05 MST 2006"
 }
