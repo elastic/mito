@@ -1,4 +1,4 @@
-mito -data state.json -max 2 src.cel
+mito -data state.json -max_executions 2 src.cel
 ! stderr .
 cmp stdout want.txt
 
