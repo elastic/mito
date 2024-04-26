@@ -67,7 +67,7 @@ func Main() int {
 	}
 	use := flag.String("use", "all", "libraries to use")
 	data := flag.String("data", "", "path to a JSON object holding input (exposed as the label "+root+")")
-	maxExecutions := flag.Uint("max_executions", 1000000, "maximum number of evaluations")
+	maxExecutions := flag.Int("max_executions", -1, "maximum number of evaluations, or no maximum if -1")
 	cfgPath := flag.String("cfg", "", "path to a YAML file holding configuration for global vars and regular expressions")
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
 	version := flag.Bool("version", false, "print version and exit")
@@ -184,7 +184,7 @@ func Main() int {
 		input = map[string]interface{}{root: input}
 	}
 
-	for n := uint(0); n < *maxExecutions; n++ {
+	for n := int(0); *maxExecutions < 0 || n < *maxExecutions; n++ {
 		res, val, err := eval(string(b), root, input, libs...)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
