@@ -67,6 +67,7 @@ func Main() int {
 	}
 	use := flag.String("use", "all", "libraries to use")
 	data := flag.String("data", "", "path to a JSON object holding input (exposed as the label "+root+")")
+	maxExecutions := flag.Int("max_executions", -1, "maximum number of evaluations, or no maximum if -1")
 	cfgPath := flag.String("cfg", "", "path to a YAML file holding configuration for global vars and regular expressions")
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
 	version := flag.Bool("version", false, "print version and exit")
@@ -144,6 +145,9 @@ func Main() int {
 				libMap["http"] = lib.HTTP(setClientInsecure(client, *insecure), nil, nil)
 			}
 		}
+		if *maxExecutions == -1 && cfg.MaxExecutions != nil {
+			*maxExecutions = *cfg.MaxExecutions
+		}
 	}
 	if libMap["http"] == nil {
 		libMap["http"] = lib.HTTP(setClientInsecure(nil, *insecure), nil, nil)
@@ -183,7 +187,7 @@ func Main() int {
 		input = map[string]interface{}{root: input}
 	}
 
-	for {
+	for n := int(0); *maxExecutions < 0 || n < *maxExecutions; n++ {
 		res, val, err := eval(string(b), root, input, libs...)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -386,10 +390,11 @@ func toUpper(p []byte) {
 }
 
 type config struct {
-	Globals map[string]interface{} `yaml:"globals"`
-	Regexps map[string]string      `yaml:"regexp"`
-	XSDs    map[string]string      `yaml:"xsd"`
-	Auth    *authConfig            `yaml:"auth"`
+	Globals       map[string]interface{} `yaml:"globals"`
+	Regexps       map[string]string      `yaml:"regexp"`
+	XSDs          map[string]string      `yaml:"xsd"`
+	Auth          *authConfig            `yaml:"auth"`
+	MaxExecutions *int                   `yaml:"max_executions"`
 }
 
 type authConfig struct {
