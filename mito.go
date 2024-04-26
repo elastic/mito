@@ -145,6 +145,9 @@ func Main() int {
 				libMap["http"] = lib.HTTP(setClientInsecure(client, *insecure), nil, nil)
 			}
 		}
+		if *maxExecutions == -1 && cfg.MaxExecutions != nil {
+			*maxExecutions = *cfg.MaxExecutions
+		}
 	}
 	if libMap["http"] == nil {
 		libMap["http"] = lib.HTTP(setClientInsecure(nil, *insecure), nil, nil)
@@ -387,10 +390,11 @@ func toUpper(p []byte) {
 }
 
 type config struct {
-	Globals map[string]interface{} `yaml:"globals"`
-	Regexps map[string]string      `yaml:"regexp"`
-	XSDs    map[string]string      `yaml:"xsd"`
-	Auth    *authConfig            `yaml:"auth"`
+	Globals       map[string]interface{} `yaml:"globals"`
+	Regexps       map[string]string      `yaml:"regexp"`
+	XSDs          map[string]string      `yaml:"xsd"`
+	Auth          *authConfig            `yaml:"auth"`
+	MaxExecutions *int                   `yaml:"max_executions"`
 }
 
 type authConfig struct {
