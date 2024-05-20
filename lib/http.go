@@ -1057,7 +1057,7 @@ func formatQuery(arg ref.Val) ref.Val {
 	}
 	q, err := queryMap.ConvertToNative(reflectMapStringStringSliceType)
 	if err != nil {
-		return types.NewErr("no such overload for format_url: %v", err)
+		return types.NewErr("no such overload for format_query: %v", err)
 	}
 	switch q := q.(type) {
 	case url.Values:
@@ -1065,6 +1065,6 @@ func formatQuery(arg ref.Val) ref.Val {
 	case map[string][]string:
 		return types.String(url.Values(q).Encode())
 	default:
-		return types.NewErr("invalid type for format_url: %T", q)
+		return types.NewErr("invalid type for format_query: %T", q)
 	}
 }
