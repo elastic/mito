@@ -51,6 +51,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/elastic/mito/internal/httplog"
 	"github.com/elastic/mito/lib"
 )
 
@@ -70,6 +71,8 @@ func Main() int {
 	maxExecutions := flag.Int("max_executions", -1, "maximum number of evaluations, or no maximum if -1")
 	cfgPath := flag.String("cfg", "", "path to a YAML file holding configuration for global vars and regular expressions")
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
+	logTrace := flag.Bool("log_requests", false, "log request traces to stderr (go1.21+)")
+	maxTraceBody := flag.Int("max_log_body", 1000, "maximum length of body logged in request traces (go1.21+)")
 	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	if *version {
@@ -78,6 +81,9 @@ func Main() int {
 	if len(flag.Args()) != 1 {
 		flag.Usage()
 		return 2
+	}
+	if *logTrace && !httplog.Available {
+		fmt.Fprintln(os.Stderr, "request tracing not supported before go1.21")
 	}
 
 	libs := []cel.EnvOption{
@@ -135,14 +141,14 @@ func Main() int {
 				fmt.Fprintln(os.Stderr, "configured basic authentication and OAuth2")
 				return 2
 			case auth.Basic != nil:
-				libMap["http"] = lib.HTTP(setClientInsecure(nil, *insecure), nil, auth.Basic)
+				libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), nil, auth.Basic)
 			case auth.OAuth2 != nil:
 				client, err := oAuth2Client(*auth.OAuth2)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return 2
 				}
-				libMap["http"] = lib.HTTP(setClientInsecure(client, *insecure), nil, nil)
+				libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(client, *insecure), *logTrace, *maxTraceBody), nil, nil)
 			}
 		}
 		if *maxExecutions == -1 && cfg.MaxExecutions != nil {
@@ -150,7 +156,7 @@ func Main() int {
 		}
 	}
 	if libMap["http"] == nil {
-		libMap["http"] = lib.HTTP(setClientInsecure(nil, *insecure), nil, nil)
+		libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), nil, nil)
 	}
 	if *use == "all" {
 		for _, l := range libMap {
@@ -259,6 +265,23 @@ func setClientInsecure(c *http.Client, insecure bool) *http.Client {
 	}
 	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: insecure}
 	c.Transport = t
+	return c
+}
+
+// traceReqs wraps c with a request trace logger that logs HTTP requests and
+// their responses to stderr. If c is nil and trace is true
+// http.DefaultClient and http.DefaultTransport are used and will be mutated.
+func traceReqs(c *http.Client, trace bool, max int) *http.Client {
+	if !trace {
+		return c
+	}
+	if c == nil {
+		c = http.DefaultClient
+	}
+	if c.Transport == nil {
+		c.Transport = http.DefaultTransport
+	}
+	c.Transport = httplog.NewLoggingRoundTripper(c.Transport, max)
 	return c
 }
 
