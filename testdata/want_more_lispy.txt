@@ -1,0 +1,83 @@
+mito -data state.json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{"list": [1, 2, 3, 4, 5]}
+-- src.cel --
+{
+	?"head":     state.list[?0], // Pure CEL spelling of (car state.list).
+	"list":      tail(state.list),
+	"old":       state.list,
+	"want_more": state.list[?0].hasValue(),
+}
+-- want.txt --
+{
+	"head": 1,
+	"list": [
+		2,
+		3,
+		4,
+		5
+	],
+	"old": [
+		1,
+		2,
+		3,
+		4,
+		5
+	],
+	"want_more": true
+}
+{
+	"head": 2,
+	"list": [
+		3,
+		4,
+		5
+	],
+	"old": [
+		2,
+		3,
+		4,
+		5
+	],
+	"want_more": true
+}
+{
+	"head": 3,
+	"list": [
+		4,
+		5
+	],
+	"old": [
+		3,
+		4,
+		5
+	],
+	"want_more": true
+}
+{
+	"head": 4,
+	"list": [
+		5
+	],
+	"old": [
+		4,
+		5
+	],
+	"want_more": true
+}
+{
+	"head": 5,
+	"list": [],
+	"old": [
+		5
+	],
+	"want_more": true
+}
+{
+	"list": [],
+	"old": [],
+	"want_more": false
+}
