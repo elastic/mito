@@ -201,6 +201,25 @@ import (
 //	[1,2,3,4,5,6,7].min()  // return 1
 //	min([1,2,3,4,5,6,7])   // return 1
 //
+// # Tail
+//
+// Returns the elements of a list after the first element:
+//
+//	tail(<list<dyn>>) -> <optional<dyn>>
+//
+// Examples:
+//
+//	tail([1, 2, 3, 4, 5, 6])  // return [2, 3, 4, 5, 6]
+//	tail([6])                 // return []
+//	tail([])                  // return []
+//
+// The conjugate of tail, getting the first element, can be achieved
+// directly using list indexing, for example if a is [1, 2, 3, 4, 5, 6]
+// and b is []:
+//
+//	a[?0]  // return 1
+//	b[?0]  // return optional.none
+//
 // # Values
 //
 // Returns a list of values from a map:
@@ -391,6 +410,15 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 			),
 		),
 
+		cel.Function("tail",
+			cel.Overload(
+				"tail_list",
+				[]*cel.Type{listV},
+				listV,
+				cel.UnaryBinding(tail),
+			),
+		),
+
 		cel.Function("values",
 			cel.MemberOverload(
 				"map_values",
@@ -451,6 +479,30 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 }
 
 func (collectionsLib) ProgramOptions() []cel.ProgramOption { return nil }
+
+func tail(arg ref.Val) ref.Val {
+	obj := arg
+	l, ok := obj.(traits.Lister)
+	if !ok {
+		return types.ValOrErr(obj, "no such overload")
+	}
+	if l.Size() == types.IntZero {
+		return arg
+	}
+	n := l.Size().(types.Int)
+	t := make([]ref.Val, 0, n-1)
+	it := l.Iterator()
+	head := true
+	for it.HasNext() == types.True {
+		if head {
+			it.Next()
+			head = false
+			continue
+		}
+		t = append(t, it.Next())
+	}
+	return types.NewRefValList(types.DefaultTypeAdapter, t)
+}
 
 func flatten(arg ref.Val) ref.Val {
 	obj := arg
