@@ -930,6 +930,9 @@ func compare(arg ref.Val, cmp types.Int) ref.Val {
 	if !ok {
 		return types.NoSuchOverloadErr()
 	}
+	if list.Size() == types.IntZero {
+		return types.NewErr("no extremum of empty list")
+	}
 
 	type comparer interface {
 		ref.Val
