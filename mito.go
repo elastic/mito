@@ -18,8 +18,7 @@
 // Package mito provides the logic for a main function and test infrastructure
 // for a CEL-based message stream processor.
 //
-// This repository is a design sketch. The majority of the logic resides in the
-// the lib package.
+// The majority of the logic resides in the the lib package.
 package mito
 
 import (
@@ -52,6 +51,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/elastic/mito/internal/httplog"
+	"github.com/elastic/mito/internal/rc"
 	"github.com/elastic/mito/lib"
 )
 
@@ -69,7 +69,7 @@ func Main() int {
 	use := flag.String("use", "all", "libraries to use")
 	data := flag.String("data", "", "path to a JSON object holding input (exposed as the label "+root+")")
 	maxExecutions := flag.Int("max_executions", -1, "maximum number of evaluations, or no maximum if -1")
-	cfgPath := flag.String("cfg", "", "path to a YAML file holding configuration for global vars and regular expressions")
+	cfgPath := flag.String("cfg", "", "path to a YAML file holding run control configuration (see pkg.go.dev/github.com/elastic/mito/cmd/mito)")
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
 	logTrace := flag.Bool("log_requests", false, "log request traces to stderr (go1.21+)")
 	maxTraceBody := flag.Int("max_log_body", 1000, "maximum length of body logged in request traces (go1.21+)")
@@ -97,7 +97,7 @@ func Main() int {
 		}
 		defer f.Close()
 		dec := yaml.NewDecoder(f)
-		var cfg config
+		var cfg Config
 		err = dec.Decode(&cfg)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -412,41 +412,13 @@ func toUpper(p []byte) {
 	}
 }
 
-type config struct {
-	Globals       map[string]interface{} `yaml:"globals"`
-	Regexps       map[string]string      `yaml:"regexp"`
-	XSDs          map[string]string      `yaml:"xsd"`
-	Auth          *authConfig            `yaml:"auth"`
-	MaxExecutions *int                   `yaml:"max_executions"`
-}
+type (
+	Config     = rc.Config
+	AuthConfig = rc.AuthConfig
+	OAuth2     = rc.OAuth2Config
+)
 
-type authConfig struct {
-	Basic  *lib.BasicAuth `yaml:"basic"`
-	OAuth2 *oAuth2        `yaml:"oauth2"`
-}
-
-type oAuth2 struct {
-	Provider string `yaml:"provider"`
-
-	ClientID       string     `yaml:"client.id"`
-	ClientSecret   *string    `yaml:"client.secret"`
-	EndpointParams url.Values `yaml:"endpoint_params"`
-	Password       string     `yaml:"password"`
-	Scopes         []string   `yaml:"scopes"`
-	TokenURL       string     `yaml:"token_url"`
-	User           string     `yaml:"user"`
-
-	GoogleCredentialsFile  string `yaml:"google.credentials_file"`
-	GoogleCredentialsJSON  string `yaml:"google.credentials_json"`
-	GoogleJWTFile          string `yaml:"google.jwt_file"`
-	GoogleJWTJSON          string `yaml:"google.jwt_json"`
-	GoogleDelegatedAccount string `yaml:"google.delegated_account"`
-
-	AzureTenantID string `yaml:"azure.tenant_id"`
-	AzureResource string `yaml:"azure.resource"`
-}
-
-func oAuth2Client(cfg oAuth2) (*http.Client, error) {
+func oAuth2Client(cfg OAuth2) (*http.Client, error) {
 	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{})
 
 	switch prov := strings.ToLower(cfg.Provider); prov {
