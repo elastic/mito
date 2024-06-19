@@ -1,0 +1,124 @@
+mito -cfg cfg.yaml -use strings,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- cfg.yaml --
+regexp:
+  "dummy": "."
+-- src.cel --
+{
+	"func Compare(a, b []byte) int":[
+		b"a".compare(b"b"),
+		b"a".compare(b"a"),
+		b"b".compare(b"a"),
+	],
+	"func Contains(s, substr []byte) bool":[
+		b"food".contains_substr(b"foo"),
+		b"food".contains_substr(b"bar"),
+	],
+	"func HasPrefix(s, prefix []byte) bool":[
+		b"food".has_prefix(b"foo"),
+		b"food".has_prefix(b"bar"),
+	],
+	"func HasSuffix(s, suffix []byte) bool":[
+		b"food".has_suffix(b"ood"),
+		b"food".has_suffix(b"bar"),
+	],
+	"func Index(s, substr []byte) int":[
+		b"find me in this string".index(b"me") == 5,
+		b"find me in this string".index(b"you") == -1,
+	],
+	"func LastIndex(s, substr []byte) int":[
+		b"find me or me in this string".last_index(b"me") == 11,
+		b"find me or me in this string".last_index(b"you") == -1,
+	],
+	"substring":[
+		// ASCII
+		size(b"01234567890"),
+		b"01234567890".substring(0, 0),
+		b"01234567890".substring(1, 4),
+		b"01234567890".substring(0, 8),
+		b"01234567890".substring(11, 11),
+		try(b"01234567890".substring(-1, 8)),
+		try(b"01234567890".substring(0, -1)),
+		try(b"01234567890".substring(11, 12)),
+		try(b"01234567890".substring(0, 12)),
+		try(b"01234567890".substring(10, 12)),
+	],
+	"func Trim(s []byte, cutset string) []byte":[
+		b"abacabactextcbacabca".trim("abc"),
+	],
+	"func TrimLeft(s []byte, cutset string) []byte":[
+		b"abacabactextcbacabca".trim_left("abc"),
+	],
+	"func TrimPrefix(s, prefix []byte) []byte":[
+		b"prefixinfixsuffix".trim_prefix(b"prefix"),
+	],
+	"func TrimRight(s []byte, cutset string) []byte":[
+		b"abacabactextcbacabca".trim_right("abc"),
+	],
+	"func TrimSpace(s []byte) []byte":[
+		b"\n   text \t \n\r\n".trim_space(),
+	],
+	"func TrimSuffix(s, suffix []byte) []byte":[
+		b"prefixinfixsuffix".trim_suffix(b"suffix"),
+	],
+}
+-- want.txt --
+{
+	"func Compare(a, b []byte) int": [
+		-1,
+		0,
+		1
+	],
+	"func Contains(s, substr []byte) bool": [
+		true,
+		false
+	],
+	"func HasPrefix(s, prefix []byte) bool": [
+		true,
+		false
+	],
+	"func HasSuffix(s, suffix []byte) bool": [
+		true,
+		false
+	],
+	"func Index(s, substr []byte) int": [
+		true,
+		true
+	],
+	"func LastIndex(s, substr []byte) int": [
+		true,
+		true
+	],
+	"func Trim(s []byte, cutset string) []byte": [
+		"dGV4dA=="
+	],
+	"func TrimLeft(s []byte, cutset string) []byte": [
+		"dGV4dGNiYWNhYmNh"
+	],
+	"func TrimPrefix(s, prefix []byte) []byte": [
+		"aW5maXhzdWZmaXg="
+	],
+	"func TrimRight(s []byte, cutset string) []byte": [
+		"YWJhY2FiYWN0ZXh0"
+	],
+	"func TrimSpace(s []byte) []byte": [
+		"dGV4dA=="
+	],
+	"func TrimSuffix(s, suffix []byte) []byte": [
+		"cHJlZml4aW5maXg="
+	],
+	"substring": [
+		11,
+		"",
+		"MTIz",
+		"MDEyMzQ1Njc=",
+		"",
+		"substring: start out of range: -1 < 0",
+		"substring: end out of range: -1 < 0",
+		"AA==",
+		"MDEyMzQ1Njc4OTAA",
+		"MAA="
+	]
+}

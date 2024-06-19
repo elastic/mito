@@ -18,6 +18,7 @@
 package lib
 
 import (
+	"bytes"
 	"strings"
 	"unicode/utf8"
 
@@ -39,7 +40,7 @@ import (
 //
 //   - compare: strings.Compare(a, b string) int
 //   - contains_substr: strings.Contains(s, substr string) bool
-//   - contained_any: strings.ContainsAny(s, chars string) bool
+//   - contains_any: strings.ContainsAny(s, chars string) bool
 //   - count: strings.Count(s, substr string) int
 //   - equal_fold: strings.EqualFold(s, t string) bool
 //   - fields: strings.Fields(s string) []string
@@ -86,6 +87,23 @@ import (
 //
 //   - to_valid_utf8: strings.ToValidUTF8(s, replacement string) string
 //   - valid_utf8: utf8.Valid(s []byte) bool
+//   - compare: bytes.Compare(a, b []byte) int
+//   - contains_substr: bytes.Contains(s, substr []byte) bool
+//   - has_prefix: bytes.HasPrefix(s, prefix []byte) bool
+//   - has_suffix: bytes.HasSuffix(s, suffix []byte) bool
+//   - index: bytes.Index(s, substr []byte) int
+//   - last_index: bytes.LastIndex(s, substr []byte) int
+//   - trim: bytes.Trim(s []byte, cutset string) []byte
+//   - trim_left: bytes.TrimLeft(s []byte, cutset string) []byte
+//   - trim_prefix: bytes.TrimPrefix(s, prefix []byte) []byte
+//   - trim_right: bytes.TrimRight(s []byte, cutset string) []byte
+//   - trim_space: bytes.TrimSpace(s []byte) []byte
+//   - trim_suffix: bytes.TrimSuffix(s, suffix []byte) []byte
+//
+// The substring method on bytes slices has the same semantics as the Go byte slice
+// slicing operation.
+//
+//   - substring: s[start:end]
 func Strings() cel.EnvOption {
 	return cel.Lib(stringLib{})
 }
@@ -101,13 +119,27 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.IntType,
 				cel.BinaryBinding(l.compare),
 			),
+			cel.MemberOverload(
+				"bytes_compare_bytes_int",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.IntType,
+				cel.BinaryBinding(l.compareBytes),
+			),
 		),
-		cel.Function("contains_substr" /* required to disambiguate from regexp.contains.*/, cel.MemberOverload(
-			"string_contains_substr_string_bool",
-			[]*cel.Type{cel.StringType, cel.StringType},
-			cel.BoolType,
-			cel.BinaryBinding(l.contains),
-		)),
+		cel.Function("contains_substr", /* required to disambiguate from regexp.contains.*/
+			cel.MemberOverload(
+				"string_contains_substr_string_bool",
+				[]*cel.Type{cel.StringType, cel.StringType},
+				cel.BoolType,
+				cel.BinaryBinding(l.contains),
+			),
+			cel.MemberOverload(
+				"bytes_contains_substr_bytes_bool",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.BoolType,
+				cel.BinaryBinding(l.containsBytes),
+			),
+		),
 		cel.Function("contains_any",
 			cel.MemberOverload(
 				"string_contains_any_string_bool",
@@ -147,6 +179,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.BoolType,
 				cel.BinaryBinding(l.hasPrefix),
 			),
+			cel.MemberOverload(
+				"bytes_has_prefix_bytes_bool",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.BoolType,
+				cel.BinaryBinding(l.hasPrefixBytes),
+			),
 		),
 		cel.Function("has_suffix",
 			cel.MemberOverload(
@@ -155,6 +193,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.BoolType,
 				cel.BinaryBinding(l.hasSuffix),
 			),
+			cel.MemberOverload(
+				"bytes_has_suffix_bytes_bool",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.BoolType,
+				cel.BinaryBinding(l.hasSuffixBytes),
+			),
 		),
 		cel.Function("index",
 			cel.MemberOverload(
@@ -162,6 +206,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.StringType, cel.StringType},
 				cel.IntType,
 				cel.BinaryBinding(l.index),
+			),
+			cel.MemberOverload(
+				"bytes_index_bytes_int",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.IntType,
+				cel.BinaryBinding(l.indexBytes),
 			),
 		),
 		cel.Function("index_any",
@@ -186,6 +236,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.StringType, cel.StringType},
 				cel.IntType,
 				cel.BinaryBinding(l.lastIndex),
+			),
+			cel.MemberOverload(
+				"bytes_last_index_bytes_int",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.IntType,
+				cel.BinaryBinding(l.lastIndexBytes),
 			),
 		),
 		cel.Function("last_index_any",
@@ -259,6 +315,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.StringType,
 				cel.FunctionBinding(l.substring),
 			),
+			cel.MemberOverload(
+				"bytes_substring_int_int_bytes",
+				[]*cel.Type{cel.BytesType, cel.IntType, cel.IntType},
+				cel.BytesType,
+				cel.FunctionBinding(l.substringBytes),
+			),
 		),
 		cel.Function("to_lower",
 			cel.MemberOverload(
@@ -299,6 +361,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.StringType,
 				cel.BinaryBinding(l.trim),
 			),
+			cel.MemberOverload(
+				"bytes_trim_bytes_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.BytesType,
+				cel.BinaryBinding(l.trimBytes),
+			),
 		),
 		cel.Function("trim_left",
 			cel.MemberOverload(
@@ -306,6 +374,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.StringType, cel.StringType},
 				cel.StringType,
 				cel.BinaryBinding(l.trimLeft),
+			),
+			cel.MemberOverload(
+				"bytes_trim_left_bytes_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.BytesType,
+				cel.BinaryBinding(l.trimLeftBytes),
 			),
 		),
 		cel.Function("trim_prefix",
@@ -315,6 +389,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.StringType,
 				cel.BinaryBinding(l.trimPrefix),
 			),
+			cel.MemberOverload(
+				"bytes_trim_prefix_bytes_bytes",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.BytesType,
+				cel.BinaryBinding(l.trimPrefixBytes),
+			),
 		),
 		cel.Function("trim_right",
 			cel.MemberOverload(
@@ -322,6 +402,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.StringType, cel.StringType},
 				cel.StringType,
 				cel.BinaryBinding(l.trimRight),
+			),
+			cel.MemberOverload(
+				"bytes_trim_right_bytes_string",
+				[]*cel.Type{cel.BytesType, cel.StringType},
+				cel.BytesType,
+				cel.BinaryBinding(l.trimRightBytes),
 			),
 		),
 		cel.Function("trim_space",
@@ -331,6 +417,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				cel.StringType,
 				cel.UnaryBinding(l.trimSpace),
 			),
+			cel.MemberOverload(
+				"bytes_trim_space_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.BytesType,
+				cel.UnaryBinding(l.trimSpaceBytes),
+			),
 		),
 		cel.Function("trim_suffix",
 			cel.MemberOverload(
@@ -338,6 +430,12 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.StringType, cel.StringType},
 				cel.StringType,
 				cel.BinaryBinding(l.trimSuffix),
+			),
+			cel.MemberOverload(
+				"bytes_trim_suffix_bytes_bytes",
+				[]*cel.Type{cel.BytesType, cel.BytesType},
+				cel.BytesType,
+				cel.BinaryBinding(l.trimSuffixBytes),
 			),
 		),
 		cel.Function("valid_utf8",
@@ -365,6 +463,18 @@ func (l stringLib) compare(arg0, arg1 ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(strings.Compare(string(a), string(b)))
 }
 
+func (l stringLib) compareBytes(arg0, arg1 ref.Val) ref.Val {
+	a, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(a, "no such overload for compare")
+	}
+	b, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(b, "no such overload for compare")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.Compare([]byte(a), []byte(b)))
+}
+
 func (l stringLib) contains(arg0, arg1 ref.Val) ref.Val {
 	s, ok := arg0.(types.String)
 	if !ok {
@@ -375,6 +485,18 @@ func (l stringLib) contains(arg0, arg1 ref.Val) ref.Val {
 		return types.ValOrErr(substr, "no such overload for contains_substr")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(strings.Contains(string(s), string(substr)))
+}
+
+func (l stringLib) containsBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for contains_substr")
+	}
+	substr, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(substr, "no such overload for contains_substr")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.Contains([]byte(s), []byte(substr)))
 }
 
 func (l stringLib) containsAny(arg0, arg1 ref.Val) ref.Val {
@@ -433,6 +555,18 @@ func (l stringLib) hasPrefix(arg0, arg1 ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(strings.HasPrefix(string(s), string(prefix)))
 }
 
+func (l stringLib) hasPrefixBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for has_prefix")
+	}
+	prefix, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(prefix, "no such overload for has_prefix")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.HasPrefix([]byte(s), []byte(prefix)))
+}
+
 func (l stringLib) hasSuffix(arg0, arg1 ref.Val) ref.Val {
 	s, ok := arg0.(types.String)
 	if !ok {
@@ -445,6 +579,18 @@ func (l stringLib) hasSuffix(arg0, arg1 ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(strings.HasSuffix(string(s), string(suffix)))
 }
 
+func (l stringLib) hasSuffixBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for has_suffix")
+	}
+	suffix, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(suffix, "no such overload for has_suffix")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.HasSuffix([]byte(s), []byte(suffix)))
+}
+
 func (l stringLib) index(arg0, arg1 ref.Val) ref.Val {
 	s, ok := arg0.(types.String)
 	if !ok {
@@ -455,6 +601,18 @@ func (l stringLib) index(arg0, arg1 ref.Val) ref.Val {
 		return types.ValOrErr(substr, "no such overload for index")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(strings.Index(string(s), string(substr)))
+}
+
+func (l stringLib) indexBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for index")
+	}
+	substr, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(substr, "no such overload for index")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.Index([]byte(s), []byte(substr)))
 }
 
 func (l stringLib) indexAny(arg0, arg1 ref.Val) ref.Val {
@@ -491,6 +649,18 @@ func (l stringLib) lastIndex(arg0, arg1 ref.Val) ref.Val {
 		return types.ValOrErr(substr, "no such overload for last_index")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(strings.LastIndex(string(s), string(substr)))
+}
+
+func (l stringLib) lastIndexBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for last_index")
+	}
+	substr, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(substr, "no such overload for last_index")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.LastIndex([]byte(s), []byte(substr)))
 }
 
 func (l stringLib) lastIndexAny(arg0, arg1 ref.Val) ref.Val {
@@ -669,6 +839,31 @@ func (l stringLib) substring(args ...ref.Val) ref.Val {
 	return types.NewErr("substring: end out of range: %d > %d", end, i)
 }
 
+func (l stringLib) substringBytes(args ...ref.Val) ref.Val {
+	if len(args) != 3 {
+		return types.NewErr("no such overload for substring")
+	}
+	s, ok := args[0].(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for substring")
+	}
+	start, ok := args[1].(types.Int)
+	if !ok {
+		return types.ValOrErr(start, "no such overload for substring")
+	}
+	if start < 0 {
+		return types.NewErr("substring: start out of range: %d < 0", start)
+	}
+	end, ok := args[2].(types.Int)
+	if !ok {
+		return types.ValOrErr(end, "no such overload for substring")
+	}
+	if end < start {
+		return types.NewErr("substring: end out of range: %d < %d", end, start)
+	}
+	return types.DefaultTypeAdapter.NativeToValue(s[start:end])
+}
+
 func (l stringLib) toLower(arg ref.Val) ref.Val {
 	s, ok := arg.(types.String)
 	if !ok {
@@ -717,6 +912,18 @@ func (l stringLib) trim(arg0, arg1 ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(strings.Trim(string(s), string(cutset)))
 }
 
+func (l stringLib) trimBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for trim")
+	}
+	cutset, ok := arg1.(types.String)
+	if !ok {
+		return types.ValOrErr(cutset, "no such overload for trim")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.Trim([]byte(s), string(cutset)))
+}
+
 func (l stringLib) trimLeft(arg0, arg1 ref.Val) ref.Val {
 	s, ok := arg0.(types.String)
 	if !ok {
@@ -727,6 +934,18 @@ func (l stringLib) trimLeft(arg0, arg1 ref.Val) ref.Val {
 		return types.ValOrErr(cutset, "no such overload for trim_left")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(strings.TrimLeft(string(s), string(cutset)))
+}
+
+func (l stringLib) trimLeftBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for trim_left")
+	}
+	cutset, ok := arg1.(types.String)
+	if !ok {
+		return types.ValOrErr(cutset, "no such overload for trim_left")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.TrimLeft([]byte(s), string(cutset)))
 }
 
 func (l stringLib) trimPrefix(arg0, arg1 ref.Val) ref.Val {
@@ -741,6 +960,18 @@ func (l stringLib) trimPrefix(arg0, arg1 ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(strings.TrimPrefix(string(s), string(prefix)))
 }
 
+func (l stringLib) trimPrefixBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for trim_prefix")
+	}
+	prefix, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(prefix, "no such overload for trim_prefix")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.TrimPrefix([]byte(s), []byte(prefix)))
+}
+
 func (l stringLib) trimRight(arg0, arg1 ref.Val) ref.Val {
 	s, ok := arg0.(types.String)
 	if !ok {
@@ -753,12 +984,32 @@ func (l stringLib) trimRight(arg0, arg1 ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(strings.TrimRight(string(s), string(cutset)))
 }
 
+func (l stringLib) trimRightBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for trim_right")
+	}
+	cutset, ok := arg1.(types.String)
+	if !ok {
+		return types.ValOrErr(cutset, "no such overload for trim_right")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.TrimRight([]byte(s), string(cutset)))
+}
+
 func (l stringLib) trimSpace(arg ref.Val) ref.Val {
 	s, ok := arg.(types.String)
 	if !ok {
 		return types.ValOrErr(s, "no such overload for trim_space")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(strings.TrimSpace(string(s)))
+}
+
+func (l stringLib) trimSpaceBytes(arg ref.Val) ref.Val {
+	s, ok := arg.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for trim_space")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.TrimSpace([]byte(s)))
 }
 
 func (l stringLib) trimSuffix(arg0, arg1 ref.Val) ref.Val {
@@ -771,6 +1022,18 @@ func (l stringLib) trimSuffix(arg0, arg1 ref.Val) ref.Val {
 		return types.ValOrErr(suffix, "no such overload for trim_suffix")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(strings.TrimSuffix(string(s), string(suffix)))
+}
+
+func (l stringLib) trimSuffixBytes(arg0, arg1 ref.Val) ref.Val {
+	s, ok := arg0.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for trim_suffix")
+	}
+	suffix, ok := arg1.(types.Bytes)
+	if !ok {
+		return types.ValOrErr(suffix, "no such overload for trim_suffix")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(bytes.TrimSuffix([]byte(s), []byte(suffix)))
 }
 
 func (l stringLib) validString(arg ref.Val) ref.Val {
