@@ -47,7 +47,7 @@ func (e DecoratedError) Error() string {
 	}
 	loc := e.AST.NativeRep().SourceInfo().GetStartLocation(id)
 	errs := common.NewErrors(e.AST.Source())
-	errs.ReportErrorAtID(id, loc, e.Err.Error())
+	errs.ReportErrorAtID(id, loc, "%s", e.Err.Error())
 	return errs.ToDisplayString()
 }
 
