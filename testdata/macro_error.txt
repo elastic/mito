@@ -1,0 +1,12 @@
+! mito -data state.json src.cel
+! stdout .
+cmp stderr want_err.txt
+
+-- state.json --
+{"url": "", "id": 0}
+-- src.cel --
+get(state.url+state.id).as(r, r.map(k, k))
+-- want_err.txt --
+failed eval: ERROR: <input>:1:14: no such overload
+ | get(state.url+state.id).as(r, r.map(k, k))
+ | .............^
