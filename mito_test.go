@@ -133,27 +133,35 @@ func expand(ts *testscript.TestScript, neg bool, args []string) {
 }
 
 func TestSend(t *testing.T) {
-	chans := map[string]chan interface{}{"ch": make(chan interface{})}
-	send := lib.Send(chans)
+	for _, fold := range []bool{false, true} {
+		name := "unfolded"
+		if fold {
+			name = "folded"
+		}
+		t.Run(name, func(t *testing.T) {
+			chans := map[string]chan interface{}{"ch": make(chan interface{})}
+			send := lib.Send(chans)
 
-	var got interface{}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		got = <-chans["ch"]
-	}()
+			var got interface{}
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				got = <-chans["ch"]
+			}()
 
-	res, _, err := eval(`42.send_to("ch").close("ch")`, "", nil, send)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if res != "true" {
-		t.Errorf("unexpected false result")
-	}
-	wg.Wait()
-	if got != int64(42) {
-		t.Errorf("unexpected sent result: got:%v want:42", got)
+			res, _, err := eval(`42.send_to("ch").close("ch")`, "", nil, fold, send)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if res != "true" {
+				t.Errorf("unexpected false result")
+			}
+			wg.Wait()
+			if got != int64(42) {
+				t.Errorf("unexpected sent result: got:%v want:42", got)
+			}
+		})
 	}
 }
 
@@ -243,12 +251,20 @@ func TestVars(t *testing.T) {
 }`
 	)
 
-	got, _, err := eval(src, "", interpreter.EmptyActivation(), vars)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if got != want {
-		t.Errorf("unexpected result: got:- want:+\n%v", cmp.Diff(got, want))
+	for _, fold := range []bool{false, true} {
+		name := "unfolded"
+		if fold {
+			name = "folded"
+		}
+		t.Run(name, func(t *testing.T) {
+			got, _, err := eval(src, "", interpreter.EmptyActivation(), fold, vars)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if got != want {
+				t.Errorf("unexpected result: got:- want:+\n%v", cmp.Diff(got, want))
+			}
+		})
 	}
 }
 
@@ -359,12 +375,20 @@ var regexpTests = []struct {
 func TestRegaxp(t *testing.T) {
 	for _, test := range regexpTests {
 		t.Run(test.name, func(t *testing.T) {
-			got, _, err := eval(test.src, "", interpreter.EmptyActivation(), lib.Regexp(test.regexps))
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-			if got != test.want {
-				t.Errorf("unexpected result: got:- want:+\n%v", cmp.Diff(got, test.want))
+			for _, fold := range []bool{false, true} {
+				name := "unfolded"
+				if fold {
+					name = "folded"
+				}
+				t.Run(name, func(t *testing.T) {
+					got, _, err := eval(test.src, "", interpreter.EmptyActivation(), fold, lib.Regexp(test.regexps))
+					if err != nil {
+						t.Errorf("unexpected error: %v", err)
+					}
+					if got != test.want {
+						t.Errorf("unexpected result: got:- want:+\n%v", cmp.Diff(got, test.want))
+					}
+				})
 			}
 		})
 	}

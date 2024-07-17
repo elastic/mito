@@ -73,6 +73,7 @@ func Main() int {
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
 	logTrace := flag.Bool("log_requests", false, "log request traces to stderr (go1.21+)")
 	maxTraceBody := flag.Int("max_log_body", 1000, "maximum length of body logged in request traces (go1.21+)")
+	fold := flag.Bool("fold", false, "apply constant folding optimisation")
 	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	if *version {
@@ -194,7 +195,7 @@ func Main() int {
 	}
 
 	for n := int(0); *maxExecutions < 0 || n < *maxExecutions; n++ {
-		res, val, err := eval(string(b), root, input, libs...)
+		res, val, err := eval(string(b), root, input, *fold, libs...)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
@@ -324,15 +325,15 @@ func debug(tag string, value any) {
 	fmt.Fprintf(os.Stderr, "%s: logging %q: %v\n", level, tag, value)
 }
 
-func eval(src, root string, input interface{}, libs ...cel.EnvOption) (string, any, error) {
-	prg, ast, err := compile(src, root, libs...)
+func eval(src, root string, input interface{}, fold bool, libs ...cel.EnvOption) (string, any, error) {
+	prg, ast, err := compile(src, root, fold, libs...)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
 	return run(prg, ast, false, input)
 }
 
-func compile(src, root string, libs ...cel.EnvOption) (cel.Program, *cel.Ast, error) {
+func compile(src, root string, fold bool, libs ...cel.EnvOption) (cel.Program, *cel.Ast, error) {
 	opts := append([]cel.EnvOption{
 		cel.Declarations(decls.NewVar(root, decls.Dyn)),
 	}, libs...)
@@ -344,6 +345,17 @@ func compile(src, root string, libs ...cel.EnvOption) (cel.Program, *cel.Ast, er
 	ast, iss := env.Compile(src)
 	if iss.Err() != nil {
 		return nil, nil, fmt.Errorf("failed compilation: %v", iss.Err())
+	}
+
+	if fold {
+		folder, err := cel.NewConstantFoldingOptimizer()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed folding optimization: %v", err)
+		}
+		ast, iss = cel.NewStaticOptimizer(folder).Optimize(env, ast)
+		if iss.Err() != nil {
+			return nil, nil, fmt.Errorf("failed optimization: %v", iss.Err())
+		}
 	}
 
 	prg, err := env.Program(ast)
