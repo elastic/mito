@@ -1,0 +1,11 @@
+! mito -data state.json src.cel
+! stdout .
+
+# Using pattern match rather than verbatim, since different environments
+# may return different error message text due to IP family differences.
+stderr ts=2006-01-02T15%3A04%3A05Z
+
+-- state.json --
+{"url": "", "id": 0}
+-- src.cel --
+get("https://localhost:9001/?"+{"ts": ["2006-01-02T15:04:05Z"]}.format_query())
