@@ -36,45 +36,49 @@ var (
 
 var benchmarks = []struct {
 	name  string
-	setup func(*testing.B) (prg cel.Program, ast *cel.Ast, state any, err error)
+	setup func(*testing.B, bool) (prg cel.Program, ast *cel.Ast, state any, err error)
 }{
 	// Self-contained.
 	{
 		name: "hello_world_static",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(
 				`"hello world"`,
 				root,
+				fold,
 			)
 			return prg, ast, nil, err
 		},
 	},
 	{
 		name: "hello_world_object_static",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(
 				`{"greeting":"hello world"}`,
 				root,
+				fold,
 			)
 			return prg, ast, nil, err
 		},
 	},
 	{
 		name: "nested_static",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`,
 				root,
+				fold,
 			)
 			return prg, ast, nil, err
 		},
 	},
 	{
 		name: "encode_json_static",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}.encode_json()`,
 				root,
+				fold,
 				lib.JSON(nil),
 			)
 			return prg, ast, nil, err
@@ -82,10 +86,11 @@ var benchmarks = []struct {
 	},
 	{
 		name: "nested_collate_static",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}.collate("a.b.c.d.e")`,
 				root,
+				fold,
 				lib.Collections(),
 			)
 			return prg, ast, nil, err
@@ -95,18 +100,19 @@ var benchmarks = []struct {
 	// From state.
 	{
 		name: "hello_world_state",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(root, root)
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
+			prg, ast, err := compile(root, root, fold)
 			state := map[string]any{root: "hello world"}
 			return prg, ast, state, err
 		},
 	},
 	{
 		name: "hello_world_object_state",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(
 				`{"greeting":state.greeting}`,
 				root,
+				fold,
 			)
 			state := map[string]any{root: mustParseJSON(`{"greeting": "hello world}"}`)}
 			return prg, ast, state, err
@@ -114,17 +120,18 @@ var benchmarks = []struct {
 	},
 	{
 		name: "nested_state",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(root, root)
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
+			prg, ast, err := compile(root, root, fold)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
 			return prg, ast, state, err
 		},
 	},
 	{
 		name: "encode_json_state",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(`state.encode_json()`,
 				root,
+				fold,
 				lib.JSON(nil),
 			)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
@@ -140,9 +147,10 @@ var benchmarks = []struct {
 	// Similar in the net versions below.
 	{
 		name: "nested_collate_list_state",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(`[state].collate("a.b.c.d.e")`,
 				root,
+				fold,
 				lib.Collections(),
 			)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
@@ -151,9 +159,10 @@ var benchmarks = []struct {
 	},
 	{
 		name: "nested_collate_map_state",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			prg, ast, err := compile(`{"state": state}.collate("state.a.b.c.d.e")`,
 				root,
+				fold,
 				lib.Collections(),
 			)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
@@ -167,7 +176,7 @@ var benchmarks = []struct {
 		// This is to get an idea of how much of the bench work is coming from
 		// the test server.
 		name: "null_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -175,6 +184,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`get(%q).size()`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 			)
 			return prg, ast, nil, err
@@ -182,7 +192,7 @@ var benchmarks = []struct {
 	},
 	{
 		name: "hello_world_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte("hello world"))
 			}))
@@ -190,6 +200,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`string(get(%q).Body)`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 			)
 			return prg, ast, nil, err
@@ -197,7 +208,7 @@ var benchmarks = []struct {
 	},
 	{
 		name: "hello_world_object_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(`{"greeting":"hello world"}`))
 			}))
@@ -205,6 +216,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`{"greeting":bytes(get(%q).Body).decode_json().greeting}`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -213,7 +225,7 @@ var benchmarks = []struct {
 	},
 	{
 		name: "nested_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
@@ -221,6 +233,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`bytes(get(%q).Body).decode_json()`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -229,7 +242,7 @@ var benchmarks = []struct {
 	},
 	{
 		name: "encode_json_null_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
@@ -237,6 +250,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`get(%q).Body`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -247,7 +261,7 @@ var benchmarks = []struct {
 		// encode_json_net should bead assessed with reference to encode_json_null_net
 		// which performs the same request but does not round-trip the object.
 		name: "encode_json_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
@@ -255,6 +269,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`bytes(get(%q).Body).decode_json().encode_json()`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -263,7 +278,7 @@ var benchmarks = []struct {
 	},
 	{
 		name: "nested_collate_list_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
@@ -271,6 +286,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`[bytes(get(%q).Body).decode_json()].collate("a.b.c.d.e")`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 				lib.Collections(),
@@ -280,7 +296,7 @@ var benchmarks = []struct {
 	},
 	{
 		name: "nested_collate_map_net",
-		setup: func(b *testing.B) (cel.Program, *cel.Ast, any, error) {
+		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
@@ -288,6 +304,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(
 				fmt.Sprintf(`{"body": bytes(get(%q).Body).decode_json()}.collate("body.a.b.c.d.e")`, srv.URL),
 				root,
+				fold,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 				lib.Collections(),
@@ -299,24 +316,32 @@ var benchmarks = []struct {
 
 func BenchmarkMito(b *testing.B) {
 	for _, bench := range benchmarks {
-		sampled := false
 		b.Run(bench.name, func(b *testing.B) {
-			b.StopTimer()
-			prg, ast, state, err := bench.setup(b)
-			if err != nil {
-				b.Fatalf("failed setup: %v", err)
-			}
-			b.StartTimer()
+			for _, fold := range []bool{false, true} {
+				name := "unfolded"
+				if fold {
+					name = "folded"
+				}
+				b.Run(name, func(b *testing.B) {
+					sampled := false
+					b.StopTimer()
+					prg, ast, state, err := bench.setup(b, fold)
+					if err != nil {
+						b.Fatalf("failed setup: %v", err)
+					}
+					b.StartTimer()
 
-			for i := 0; i < b.N; i++ {
-				v, _, err := run(prg, ast, *fastMarshal, state)
-				if err != nil {
-					b.Fatalf("failed operation: %v", err)
-				}
-				if *sampleBench && !sampled {
-					sampled = true
-					b.Logf("\n%s", v)
-				}
+					for i := 0; i < b.N; i++ {
+						v, _, err := run(prg, ast, *fastMarshal, state)
+						if err != nil {
+							b.Fatalf("failed operation: %v", err)
+						}
+						if *sampleBench && !sampled {
+							sampled = true
+							b.Logf("\n%s", v)
+						}
+					}
+				})
 			}
 		})
 	}
