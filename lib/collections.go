@@ -358,8 +358,8 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 		cel.Function("flatten",
 			cel.MemberOverload(
 				"list_flatten",
-				[]*cel.Type{listV},
-				listV,
+				[]*cel.Type{listDyn},
+				listDyn,
 				cel.UnaryBinding(catch(flatten)),
 			),
 		),
