@@ -58,7 +58,7 @@ func (l debug) CompileOptions() []cel.EnvOption {
 				"debug_string_dyn",
 				[]*cel.Type{cel.StringType, cel.DynType},
 				cel.DynType,
-				cel.BinaryBinding(l.logDebug),
+				cel.BinaryBinding(catch(l.logDebug)),
 				cel.OverloadIsNonStrict(),
 			),
 		),

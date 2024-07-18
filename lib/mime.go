@@ -66,7 +66,7 @@ func (l mimeLib) CompileOptions() []cel.EnvOption {
 				"bytes_mime_string",
 				[]*cel.Type{cel.BytesType, cel.StringType},
 				cel.DynType,
-				cel.BinaryBinding(l.transformMIME),
+				cel.BinaryBinding(catch(l.transformMIME)),
 			),
 		),
 	}
