@@ -1,0 +1,87 @@
+mito -use collections -data state.json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{
+	"aye": {
+		"value": 1
+	},
+	"bee": {
+		"value": "two"
+	},
+	"one": [
+		{
+			"value": 1
+		},
+		{
+			"value": "two"
+		}
+	],
+	"two": [
+		{
+			"value": 3
+		},
+		{
+			"value": "four"
+		}
+	]
+}
+
+-- src.cel --
+[
+	"one",
+	"two",
+].map(k, state[k].map(e, {
+	k: e,
+})).flatten().map(d, d.with({
+	"aye": state.aye,
+	"bee": state.bee,
+}))
+-- want.txt --
+[
+	{
+		"aye": {
+			"value": 1
+		},
+		"bee": {
+			"value": "two"
+		},
+		"one": {
+			"value": 1
+		}
+	},
+	{
+		"aye": {
+			"value": 1
+		},
+		"bee": {
+			"value": "two"
+		},
+		"one": {
+			"value": "two"
+		}
+	},
+	{
+		"aye": {
+			"value": 1
+		},
+		"bee": {
+			"value": "two"
+		},
+		"two": {
+			"value": 3
+		}
+	},
+	{
+		"aye": {
+			"value": 1
+		},
+		"bee": {
+			"value": "two"
+		},
+		"two": {
+			"value": "four"
+		}
+	}
+]
