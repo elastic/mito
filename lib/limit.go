@@ -97,13 +97,13 @@ func (l limitLib) CompileOptions() []cel.EnvOption {
 				"map_dyn_rate_limit_string_duration",
 				[]*cel.Type{mapStringDyn, cel.StringType, cel.DurationType},
 				mapStringDyn,
-				cel.FunctionBinding(l.translatePolicy),
+				cel.FunctionBinding(catch(l.translatePolicy)),
 			),
 			cel.Overload(
 				"map_dyn_rate_limit_string_bool_bool_duration_int",
 				[]*cel.Type{mapStringDyn, cel.StringType, cel.BoolType, cel.BoolType, cel.DurationType, cel.IntType},
 				mapStringDyn,
-				cel.FunctionBinding(translatePolicy),
+				cel.FunctionBinding(catch(translatePolicy)),
 			),
 		),
 	}
