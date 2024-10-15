@@ -1,0 +1,55 @@
+mito -dump always -use collections src.cel
+cmp stdout want.txt
+cmp stderr want_err.txt
+
+-- src.cel --
+{"a":1}.as(v, [v, v])
+-- want.txt --
+[
+	{
+		"a": 1
+	},
+	{
+		"a": 1
+	}
+]
+-- want_err.txt --
+<input>:1:1
+ | {"a":1}.as(v, [v, v])
+ | ^
+{a: 1}
+
+<input>:1:2
+ | {"a":1}.as(v, [v, v])
+ | .^
+a
+
+<input>:1:6
+ | {"a":1}.as(v, [v, v])
+ | .....^
+1
+
+<input>:1:11
+ | {"a":1}.as(v, [v, v])
+ | ..........^
+[]
+
+<input>:1:11
+ | {"a":1}.as(v, [v, v])
+ | ..........^
+[{a: 1}, {a: 1}]
+
+<input>:1:15
+ | {"a":1}.as(v, [v, v])
+ | ..............^
+[{a: 1}, {a: 1}]
+
+<input>:1:16
+ | {"a":1}.as(v, [v, v])
+ | ...............^
+{a: 1}
+
+<input>:1:19
+ | {"a":1}.as(v, [v, v])
+ | ..................^
+{a: 1}

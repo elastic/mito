@@ -74,6 +74,7 @@ func Main() int {
 	logTrace := flag.Bool("log_requests", false, "log request traces to stderr (go1.21+)")
 	maxTraceBody := flag.Int("max_log_body", 1000, "maximum length of body logged in request traces (go1.21+)")
 	fold := flag.Bool("fold", false, "apply constant folding optimisation")
+	dumpState := flag.String("dump", "", "dump eval state ('always' or 'error')")
 	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	if *version {
@@ -195,8 +196,14 @@ func Main() int {
 	}
 
 	for n := int(0); *maxExecutions < 0 || n < *maxExecutions; n++ {
-		res, val, err := eval(string(b), root, input, *fold, libs...)
+		res, val, dump, err := eval(string(b), root, input, *fold, *dumpState != "", libs...)
+		if *dumpState == "always" {
+			fmt.Fprint(os.Stderr, dump)
+		}
 		if err != nil {
+			if *dumpState == "error" {
+				fmt.Fprint(os.Stderr, dump)
+			}
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -325,15 +332,20 @@ func debug(tag string, value any) {
 	fmt.Fprintf(os.Stderr, "%s: logging %q: %v\n", level, tag, value)
 }
 
-func eval(src, root string, input interface{}, fold bool, libs ...cel.EnvOption) (string, any, error) {
-	prg, ast, err := compile(src, root, fold, libs...)
+func eval(src, root string, input interface{}, fold, details bool, libs ...cel.EnvOption) (string, any, *lib.Dump, error) {
+	prg, ast, err := compile(src, root, fold, details, libs...)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed program instantiation: %v", err)
+		return "", nil, nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
-	return run(prg, ast, false, input)
+	res, val, det, err := run(prg, ast, false, input)
+	var dump *lib.Dump
+	if details {
+		dump = lib.NewDump(ast, det)
+	}
+	return res, val, dump, err
 }
 
-func compile(src, root string, fold bool, libs ...cel.EnvOption) (cel.Program, *cel.Ast, error) {
+func compile(src, root string, fold, details bool, libs ...cel.EnvOption) (cel.Program, *cel.Ast, error) {
 	opts := append([]cel.EnvOption{
 		cel.Declarations(decls.NewVar(root, decls.Dyn)),
 	}, libs...)
@@ -358,40 +370,44 @@ func compile(src, root string, fold bool, libs ...cel.EnvOption) (cel.Program, *
 		}
 	}
 
-	prg, err := env.Program(ast)
+	var progOpts []cel.ProgramOption
+	if details {
+		progOpts = []cel.ProgramOption{cel.EvalOptions(cel.OptTrackState)}
+	}
+	prg, err := env.Program(ast, progOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed program instantiation: %v", err)
 	}
 	return prg, ast, nil
 }
 
-func run(prg cel.Program, ast *cel.Ast, fast bool, input interface{}) (string, any, error) {
+func run(prg cel.Program, ast *cel.Ast, fast bool, input interface{}) (string, any, *cel.EvalDetails, error) {
 	if input == nil {
 		input = interpreter.EmptyActivation()
 	}
-	out, _, err := prg.Eval(input)
+	out, det, err := prg.Eval(input)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed eval: %v", lib.DecoratedError{AST: ast, Err: err})
+		return "", nil, det, fmt.Errorf("failed eval: %v", lib.DecoratedError{AST: ast, Err: err})
 	}
 
 	v, err := out.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
 	if err != nil {
-		return "", nil, fmt.Errorf("failed proto conversion: %v", err)
+		return "", nil, det, fmt.Errorf("failed proto conversion: %v", err)
 	}
 	val := v.(*structpb.Value).AsInterface()
 	if fast {
 		b, err := protojson.MarshalOptions{}.Marshal(v.(proto.Message))
 		if err != nil {
-			return "", nil, fmt.Errorf("failed native conversion: %v", err)
+			return "", nil, det, fmt.Errorf("failed native conversion: %v", err)
 		}
-		return string(b), val, nil
+		return string(b), val, det, nil
 	}
 	var buf strings.Builder
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "\t")
 	err = enc.Encode(val)
-	return strings.TrimRight(buf.String(), "\n"), val, err
+	return strings.TrimRight(buf.String(), "\n"), val, det, err
 }
 
 // rot13 is provided for testing purposes.
