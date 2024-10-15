@@ -46,6 +46,7 @@ var benchmarks = []struct {
 				`"hello world"`,
 				root,
 				fold,
+				false,
 			)
 			return prg, ast, nil, err
 		},
@@ -57,6 +58,7 @@ var benchmarks = []struct {
 				`{"greeting":"hello world"}`,
 				root,
 				fold,
+				false,
 			)
 			return prg, ast, nil, err
 		},
@@ -68,6 +70,7 @@ var benchmarks = []struct {
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`,
 				root,
 				fold,
+				false,
 			)
 			return prg, ast, nil, err
 		},
@@ -79,6 +82,7 @@ var benchmarks = []struct {
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}.encode_json()`,
 				root,
 				fold,
+				false,
 				lib.JSON(nil),
 			)
 			return prg, ast, nil, err
@@ -91,6 +95,7 @@ var benchmarks = []struct {
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}.collate("a.b.c.d.e")`,
 				root,
 				fold,
+				false,
 				lib.Collections(),
 			)
 			return prg, ast, nil, err
@@ -101,7 +106,7 @@ var benchmarks = []struct {
 	{
 		name: "hello_world_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(root, root, fold)
+			prg, ast, err := compile(root, root, fold, false)
 			state := map[string]any{root: "hello world"}
 			return prg, ast, state, err
 		},
@@ -113,6 +118,7 @@ var benchmarks = []struct {
 				`{"greeting":state.greeting}`,
 				root,
 				fold,
+				false,
 			)
 			state := map[string]any{root: mustParseJSON(`{"greeting": "hello world}"}`)}
 			return prg, ast, state, err
@@ -121,7 +127,7 @@ var benchmarks = []struct {
 	{
 		name: "nested_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(root, root, fold)
+			prg, ast, err := compile(root, root, fold, false)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
 			return prg, ast, state, err
 		},
@@ -132,6 +138,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(`state.encode_json()`,
 				root,
 				fold,
+				false,
 				lib.JSON(nil),
 			)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
@@ -151,6 +158,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(`[state].collate("a.b.c.d.e")`,
 				root,
 				fold,
+				false,
 				lib.Collections(),
 			)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
@@ -163,6 +171,7 @@ var benchmarks = []struct {
 			prg, ast, err := compile(`{"state": state}.collate("state.a.b.c.d.e")`,
 				root,
 				fold,
+				false,
 				lib.Collections(),
 			)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
@@ -185,6 +194,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`get(%q).size()`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 			)
 			return prg, ast, nil, err
@@ -201,6 +211,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`string(get(%q).Body)`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 			)
 			return prg, ast, nil, err
@@ -217,6 +228,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`{"greeting":bytes(get(%q).Body).decode_json().greeting}`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -234,6 +246,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`bytes(get(%q).Body).decode_json()`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -251,6 +264,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`get(%q).Body`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -270,6 +284,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`bytes(get(%q).Body).decode_json().encode_json()`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 			)
@@ -287,6 +302,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`[bytes(get(%q).Body).decode_json()].collate("a.b.c.d.e")`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 				lib.Collections(),
@@ -305,6 +321,7 @@ var benchmarks = []struct {
 				fmt.Sprintf(`{"body": bytes(get(%q).Body).decode_json()}.collate("body.a.b.c.d.e")`, srv.URL),
 				root,
 				fold,
+				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
 				lib.Collections(),
@@ -332,7 +349,7 @@ func BenchmarkMito(b *testing.B) {
 					b.StartTimer()
 
 					for i := 0; i < b.N; i++ {
-						v, _, err := run(prg, ast, *fastMarshal, state)
+						v, _, _, err := run(prg, ast, *fastMarshal, state)
 						if err != nil {
 							b.Fatalf("failed operation: %v", err)
 						}

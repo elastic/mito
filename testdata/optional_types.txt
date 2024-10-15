@@ -1,6 +1,6 @@
-mito -data state.json src.cel
-! stderr .
+mito -dump always -data state.json src.cel
 cmp stdout want.txt
+cmp stderr want_err.txt
 
 -- state.json --
 {"n": 0}
@@ -12,3 +12,18 @@ cmp stdout want.txt
 {
 	"has_x_y_z": false
 }
+-- want_err.txt --
+<input>:1:1
+ | {
+ | ^
+{has_x_y_z: false}
+
+<input>:2:2
+ |  "has_x_y_z": has(state.?x.?y.z),
+ | .^
+has_x_y_z
+
+<input>:2:18
+ |  "has_x_y_z": has(state.?x.?y.z),
+ | .................^
+false
