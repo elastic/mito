@@ -19,12 +19,14 @@ package lib
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 )
 
 // Strings returns a cel.EnvOption to configure extended functions for
@@ -1042,4 +1044,71 @@ func (l stringLib) validString(arg ref.Val) ref.Val {
 		return types.ValOrErr(s, "no such overload for valid_utf8")
 	}
 	return types.DefaultTypeAdapter.NativeToValue(utf8.Valid([]byte(s)))
+}
+
+// Printf returns a cel.EnvOption to configure an extended function for
+// formatting strings and associated arguments.
+//
+// # Sprintf
+//
+// Formats a string from a format string and a set of arguments using the
+// Go fmt syntax:
+//
+//	<string>.sprintf(<list<dyn>>) -> <string>
+//	sprintf(<string>, <list<dyn>>) -> <string>
+//
+// Since CEL does not support variadic functions, arguments are provided
+// as an array corresponding to the normal Go variadic slice.
+//
+// Examples:
+//
+//	"Hello, %s".sprintf(["World!"])   // return "Hello, World!"
+//	sprintf("Hello, %s", ["World!"])  // return "Hello, World!"
+func Printf() cel.EnvOption {
+	return cel.Lib(printfLib{})
+}
+
+type printfLib struct{}
+
+func (l printfLib) CompileOptions() []cel.EnvOption {
+	return []cel.EnvOption{
+		cel.Function("sprintf",
+			cel.MemberOverload(
+				"sprintf_string_list_string",
+				[]*cel.Type{types.StringType, listDyn},
+				types.StringType,
+				cel.BinaryBinding(l.sprintf),
+			),
+			cel.Overload(
+				"string_sprintf_list_string",
+				[]*cel.Type{types.StringType, listDyn},
+				types.StringType,
+				cel.BinaryBinding(l.sprintf),
+			),
+		),
+	}
+}
+
+func (l printfLib) ProgramOptions() []cel.ProgramOption { return nil }
+
+func (l printfLib) sprintf(arg0, arg1 ref.Val) ref.Val {
+	format, ok := arg0.(types.String)
+	if !ok {
+		return types.ValOrErr(format, "no such overload for sprintf: format is not a string")
+	}
+	argList, ok := arg1.(traits.Lister)
+	if !ok {
+		return types.ValOrErr(argList, "no such overload for sprintf: args is not a list")
+	}
+	n, _ := argList.Size().(types.Int) // Continue since this is an optimisation.
+	args := make([]any, 0, n)
+	it := argList.Iterator()
+	for i := 1; it.HasNext() == types.True; i++ {
+		v, err := it.Next().ConvertToNative(reflectAnyType)
+		if err != nil {
+			return types.NewErr("failed to convert argument %d: %v", i, err)
+		}
+		args = append(args, v)
+	}
+	return types.String(fmt.Sprintf(string(format), args...))
 }

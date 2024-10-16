@@ -75,6 +75,9 @@ var (
 
 // Types used for reflect conversion.
 var (
+	anyVal any
+
+	reflectAnyType                  = reflect.TypeOf(&anyVal).Elem()
 	reflectBoolType                 = reflect.TypeOf(true)
 	reflectByteSliceType            = reflect.TypeOf([]byte(nil))
 	reflectIntType                  = reflect.TypeOf(0)
