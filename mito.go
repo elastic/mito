@@ -306,6 +306,7 @@ var (
 		"http":        nil, // This will be populated by Main.
 		"limit":       lib.Limit(limitPolicies),
 		"strings":     lib.Strings(),
+		"printf":      lib.Printf(),
 	}
 
 	mimetypes = map[string]interface{}{

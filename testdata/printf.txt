@@ -1,0 +1,14 @@
+mito -use printf src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	"Hello, %s".sprintf(["World!"]),
+	sprintf("Hello, %s", ["World!"]),
+]
+-- want.txt --
+[
+	"Hello, World!",
+	"Hello, World!"
+]
