@@ -1,0 +1,66 @@
+mito -coverage cov.txt -data state.json src.cel
+! stderr .
+cmp stdout want.txt
+
+cmp cov.txt want_cov.txt
+
+-- state.json --
+{"n": 0}
+-- src.cel --
+int(state.n).as(n, {
+	"n":          n+1,
+	"want_more":  n+1 < 5,
+	"probe":      n < 2 ?
+		"little"
+	:
+		"big",
+	"fail_probe": n < 0 ?
+		"negative"
+	:
+		"non-negative",
+})
+-- want.txt --
+{
+	"fail_probe": "non-negative",
+	"n": 1,
+	"probe": "little",
+	"want_more": true
+}
+{
+	"fail_probe": "non-negative",
+	"n": 2,
+	"probe": "little",
+	"want_more": true
+}
+{
+	"fail_probe": "non-negative",
+	"n": 3,
+	"probe": "big",
+	"want_more": true
+}
+{
+	"fail_probe": "non-negative",
+	"n": 4,
+	"probe": "big",
+	"want_more": true
+}
+{
+	"fail_probe": "non-negative",
+	"n": 5,
+	"probe": "big",
+	"want_more": false
+}
+-- want_cov.txt --
+1: 0.62 (5/8) [2 36 37]
+ | int(state.n).as(n, {
+ |     !          !
+2: 1.00 (4/4)
+3: 1.00 (6/6)
+4: 1.00 (5/5)
+5: 1.00 (1/1)
+7: 1.00 (1/1)
+8: 1.00 (5/5)
+9: 0.00 (0/1) [33]
+ |   "negative"
+ |   !
+11: 1.00 (1/1)

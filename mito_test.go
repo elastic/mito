@@ -150,7 +150,7 @@ func TestSend(t *testing.T) {
 				got = <-chans["ch"]
 			}()
 
-			res, _, _, err := eval(`42.send_to("ch").close("ch")`, "", nil, fold, false, send)
+			res, _, _, _, err := eval(`42.send_to("ch").close("ch")`, "", nil, fold, false, false, send)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -257,7 +257,7 @@ func TestVars(t *testing.T) {
 			name = "folded"
 		}
 		t.Run(name, func(t *testing.T) {
-			got, _, _, err := eval(src, "", interpreter.EmptyActivation(), fold, false, vars)
+			got, _, _, _, err := eval(src, "", interpreter.EmptyActivation(), fold, false, false, vars)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -381,7 +381,7 @@ func TestRegaxp(t *testing.T) {
 					name = "folded"
 				}
 				t.Run(name, func(t *testing.T) {
-					got, _, _, err := eval(test.src, "", interpreter.EmptyActivation(), fold, false, lib.Regexp(test.regexps))
+					got, _, _, _, err := eval(test.src, "", interpreter.EmptyActivation(), fold, false, false, lib.Regexp(test.regexps))
 					if err != nil {
 						t.Errorf("unexpected error: %v", err)
 					}
