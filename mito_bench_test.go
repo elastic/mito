@@ -42,10 +42,11 @@ var benchmarks = []struct {
 	{
 		name: "hello_world_static",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				`"hello world"`,
 				root,
 				fold,
+				false,
 				false,
 			)
 			return prg, ast, nil, err
@@ -54,10 +55,11 @@ var benchmarks = []struct {
 	{
 		name: "hello_world_object_static",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				`{"greeting":"hello world"}`,
 				root,
 				fold,
+				false,
 				false,
 			)
 			return prg, ast, nil, err
@@ -66,10 +68,11 @@ var benchmarks = []struct {
 	{
 		name: "nested_static",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`,
 				root,
 				fold,
+				false,
 				false,
 			)
 			return prg, ast, nil, err
@@ -78,10 +81,11 @@ var benchmarks = []struct {
 	{
 		name: "encode_json_static",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}.encode_json()`,
 				root,
 				fold,
+				false,
 				false,
 				lib.JSON(nil),
 			)
@@ -91,10 +95,11 @@ var benchmarks = []struct {
 	{
 		name: "nested_collate_static",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				`{"a":{"b":{"c":{"d":{"e":"f"}}}}}.collate("a.b.c.d.e")`,
 				root,
 				fold,
+				false,
 				false,
 				lib.Collections(),
 			)
@@ -106,7 +111,7 @@ var benchmarks = []struct {
 	{
 		name: "hello_world_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(root, root, fold, false)
+			prg, ast, _, err := compile(root, root, fold, false, false)
 			state := map[string]any{root: "hello world"}
 			return prg, ast, state, err
 		},
@@ -114,10 +119,11 @@ var benchmarks = []struct {
 	{
 		name: "hello_world_object_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				`{"greeting":state.greeting}`,
 				root,
 				fold,
+				false,
 				false,
 			)
 			state := map[string]any{root: mustParseJSON(`{"greeting": "hello world}"}`)}
@@ -127,7 +133,7 @@ var benchmarks = []struct {
 	{
 		name: "nested_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(root, root, fold, false)
+			prg, ast, _, err := compile(root, root, fold, false, false)
 			state := map[string]any{root: mustParseJSON(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`)}
 			return prg, ast, state, err
 		},
@@ -135,9 +141,10 @@ var benchmarks = []struct {
 	{
 		name: "encode_json_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(`state.encode_json()`,
+			prg, ast, _, err := compile(`state.encode_json()`,
 				root,
 				fold,
+				false,
 				false,
 				lib.JSON(nil),
 			)
@@ -155,9 +162,10 @@ var benchmarks = []struct {
 	{
 		name: "nested_collate_list_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(`[state].collate("a.b.c.d.e")`,
+			prg, ast, _, err := compile(`[state].collate("a.b.c.d.e")`,
 				root,
 				fold,
+				false,
 				false,
 				lib.Collections(),
 			)
@@ -168,9 +176,10 @@ var benchmarks = []struct {
 	{
 		name: "nested_collate_map_state",
 		setup: func(b *testing.B, fold bool) (cel.Program, *cel.Ast, any, error) {
-			prg, ast, err := compile(`{"state": state}.collate("state.a.b.c.d.e")`,
+			prg, ast, _, err := compile(`{"state": state}.collate("state.a.b.c.d.e")`,
 				root,
 				fold,
+				false,
 				false,
 				lib.Collections(),
 			)
@@ -190,10 +199,11 @@ var benchmarks = []struct {
 				w.WriteHeader(http.StatusOK)
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`get(%q).size()`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 			)
@@ -207,10 +217,11 @@ var benchmarks = []struct {
 				w.Write([]byte("hello world"))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`string(get(%q).Body)`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 			)
@@ -224,10 +235,11 @@ var benchmarks = []struct {
 				w.Write([]byte(`{"greeting":"hello world"}`))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`{"greeting":bytes(get(%q).Body).decode_json().greeting}`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
@@ -242,10 +254,11 @@ var benchmarks = []struct {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`bytes(get(%q).Body).decode_json()`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
@@ -260,10 +273,11 @@ var benchmarks = []struct {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`get(%q).Body`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
@@ -280,10 +294,11 @@ var benchmarks = []struct {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`bytes(get(%q).Body).decode_json().encode_json()`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
@@ -298,10 +313,11 @@ var benchmarks = []struct {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`[bytes(get(%q).Body).decode_json()].collate("a.b.c.d.e")`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),
@@ -317,10 +333,11 @@ var benchmarks = []struct {
 				w.Write([]byte(`{"a":{"b":{"c":{"d":{"e":"f"}}}}}`))
 			}))
 			b.Cleanup(func() { srv.Close() })
-			prg, ast, err := compile(
+			prg, ast, _, err := compile(
 				fmt.Sprintf(`{"body": bytes(get(%q).Body).decode_json()}.collate("body.a.b.c.d.e")`, srv.URL),
 				root,
 				fold,
+				false,
 				false,
 				lib.HTTP(srv.Client(), nil, nil),
 				lib.JSON(nil),

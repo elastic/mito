@@ -1,0 +1,35 @@
+mito -coverage cov.txt -dump always -data state.json src.cel
+cmp stdout want.txt
+cmp stderr want_err.txt
+cmp cov.txt want_cov.txt
+
+-- state.json --
+{"n": 0}
+-- src.cel --
+{
+	"has_x_y_z": has(state.?x.?y.z),
+}
+-- want.txt --
+{
+	"has_x_y_z": false
+}
+-- want_err.txt --
+<input>:1:1
+ | {
+ | ^
+{has_x_y_z: false}
+
+<input>:2:2
+ |  "has_x_y_z": has(state.?x.?y.z),
+ | .^
+has_x_y_z
+
+<input>:2:18
+ |  "has_x_y_z": has(state.?x.?y.z),
+ | .................^
+false
+-- want_cov.txt --
+1: 1.00 (1/1)
+2: 0.14 (1/7) [3 5 6 7 8 9]
+ |  "has_x_y_z": has(state.?x.?y.z),
+ |  !                !    ! !! !
