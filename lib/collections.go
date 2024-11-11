@@ -178,27 +178,31 @@ import (
 //
 // # Max
 //
-// Returns the maximum value of a list of comparable objects:
+// Returns the maximum value of a list or pair of comparable objects:
 //
 //	<list<dyn>>.max() -> <dyn>
 //	max(<list<dyn>>) -> <dyn>
+//	max(<dyn>, <dyn>) -> <dyn>
 //
 // Examples:
 //
 //	[1,2,3,4,5,6,7].max()  // return 7
 //	max([1,2,3,4,5,6,7])   // return 7
+//	max(1,7)               // return 7
 //
 // # Min
 //
-// Returns the minimum value of a list of comparable objects:
+// Returns the minimum value of a list or pair of comparable objects:
 //
 //	<list<dyn>>.min() -> <dyn>
 //	min(<list<dyn>>) -> <dyn>
+//	min(<dyn>, <dyn>) -> <dyn>
 //
 // Examples:
 //
 //	[1,2,3,4,5,6,7].min()  // return 1
 //	min([1,2,3,4,5,6,7])   // return 1
+//	min(1,7)               // return 1
 //
 // # Tail
 //
@@ -384,13 +388,19 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 				"list_max",
 				[]*cel.Type{listV},
 				typeV,
-				cel.UnaryBinding(catch(max)),
+				cel.UnaryBinding(catch(maxList)),
 			),
 			cel.Overload(
 				"max_list",
 				[]*cel.Type{listV},
 				typeV,
-				cel.UnaryBinding(catch(max)),
+				cel.UnaryBinding(catch(maxList)),
+			),
+			cel.Overload(
+				"max_pair",
+				[]*cel.Type{typeV, typeV},
+				typeV,
+				cel.BinaryBinding(maxDiadic),
 			),
 		),
 
@@ -399,13 +409,19 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 				"list_min",
 				[]*cel.Type{listV},
 				typeV,
-				cel.UnaryBinding(catch(min)),
+				cel.UnaryBinding(catch(minList)),
 			),
 			cel.Overload(
 				"min_list",
 				[]*cel.Type{listV},
 				typeV,
-				cel.UnaryBinding(catch(min)),
+				cel.UnaryBinding(catch(minList)),
+			),
+			cel.Overload(
+				"min_pair",
+				[]*cel.Type{typeV, typeV},
+				typeV,
+				cel.BinaryBinding(minDiadic),
 			),
 		),
 
@@ -916,11 +932,39 @@ func collateFieldPath(arg ref.Val, path types.String) []ref.Val {
 	return collation
 }
 
-func min(arg ref.Val) ref.Val {
+type comparer interface {
+	ref.Val
+	traits.Comparer
+}
+
+func minDiadic(arg0, arg1 ref.Val) ref.Val {
+	return compareDiadic(arg0, arg1, -1)
+}
+
+func maxDiadic(arg0, arg1 ref.Val) ref.Val {
+	return compareDiadic(arg0, arg1, 1)
+}
+
+func compareDiadic(arg0, arg1 ref.Val, cmp types.Int) ref.Val {
+	a, ok := arg0.(comparer)
+	if !ok {
+		return types.NoSuchOverloadErr()
+	}
+	b, ok := arg1.(comparer)
+	if !ok {
+		return types.NoSuchOverloadErr()
+	}
+	if a.Compare(b) == cmp {
+		return a
+	}
+	return b
+}
+
+func minList(arg ref.Val) ref.Val {
 	return compare(arg, -1)
 }
 
-func max(arg ref.Val) ref.Val {
+func maxList(arg ref.Val) ref.Val {
 	return compare(arg, 1)
 }
 
@@ -933,10 +977,6 @@ func compare(arg ref.Val, cmp types.Int) ref.Val {
 		return types.NewErr("no extremum of empty list")
 	}
 
-	type comparer interface {
-		ref.Val
-		traits.Comparer
-	}
 	var min comparer
 	it := list.Iterator()
 	for it.HasNext() == types.True {
