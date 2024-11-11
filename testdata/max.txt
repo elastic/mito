@@ -6,11 +6,13 @@ cmp stdout want.txt
 [
 	[1,2,3,4,5,6,7].max(),
 	max([1,2,3,4,5,6,7]),
+	max(1, 2),
 	try(max([])),
 ]
 -- want.txt --
 [
 	7,
 	7,
+	2,
 	"no extremum of empty list"
 ]
