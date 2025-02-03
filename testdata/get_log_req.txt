@@ -1,6 +1,5 @@
 mito -use http,collections -log_requests src.cel
-# Request trace logging is not available before go1.21.
-stderr 'transaction\.id|request tracing not supported before go1\.21'
+stderr 'transaction\.id'
 cmp stdout want.txt
 
 -- src.cel --
@@ -21,8 +20,11 @@ get("http://www.example.com/").drop([
 	"Close": false,
 	"ContentLength": -1,
 	"Header": {
+		"Connection": [
+			"keep-alive"
+		],
 		"Content-Type": [
-			"text/html; charset=UTF-8"
+			"text/html"
 		],
 		"Vary": [
 			"Accept-Encoding"

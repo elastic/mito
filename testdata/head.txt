@@ -23,8 +23,11 @@ head("http://www.example.com/").drop([
 	"Body": "",
 	"Close": false,
 	"Header": {
+		"Connection": [
+			"keep-alive"
+		],
 		"Content-Type": [
-			"text/html; charset=UTF-8"
+			"text/html"
 		]
 	},
 	"Proto": "HTTP/1.1",
