@@ -15,8 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build go1.21
-
 // Package httplog provides http request and response transaction logging.
 package httplog
 
@@ -35,9 +33,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-// Available indicates logging is supported.
-const Available = true
 
 var _ http.RoundTripper = (*LoggingRoundTripper)(nil)
 

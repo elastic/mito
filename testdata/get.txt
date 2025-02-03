@@ -20,8 +20,11 @@ get("http://www.example.com/").drop([
 	"Close": false,
 	"ContentLength": -1,
 	"Header": {
+		"Connection": [
+			"keep-alive"
+		],
 		"Content-Type": [
-			"text/html; charset=UTF-8"
+			"text/html"
 		],
 		"Vary": [
 			"Accept-Encoding"

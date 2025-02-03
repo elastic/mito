@@ -85,9 +85,6 @@ func Main() int {
 		flag.Usage()
 		return 2
 	}
-	if *logTrace && !httplog.Available {
-		fmt.Fprintln(os.Stderr, "request tracing not supported before go1.21")
-	}
 
 	libs := []cel.EnvOption{
 		cel.OptionalTypes(cel.OptionalTypesVersion(lib.OptionalTypesVersion)),
