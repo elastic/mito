@@ -164,6 +164,18 @@ import (
 //	[[1],[2,3],[[[4]],[5,6]]].flatten()                     // return [1, 2, 3, 4, 5, 6]
 //	[[{"a":1,"b":[10, 11]}],[2,3],[[[4]],[5,6]]].flatten()  // return [{"a":1, "b":[10, 11]}, 2, 3, 4, 5, 6]
 //
+// # Front
+//
+// Returns the first n elements of a list:
+//
+//	front(<list<dyn>>, <int>) -> <optional<dyn>>
+//
+// Examples:
+//
+//	front([1, 2, 3, 4, 5, 6], 2)  // return [1, 2]
+//	front([6], 2)                 // return [6]
+//	front([], 2)                  // return []
+//
 // # Keys
 //
 // Returns a list of keys from a map:
@@ -206,22 +218,30 @@ import (
 //
 // # Tail
 //
-// Returns the elements of a list after the first element:
+// Returns the elements of a list after the first element, or if an integer
+// second parameter is provided, after that index:
 //
 //	tail(<list<dyn>>) -> <optional<dyn>>
+//	tail(<list<dyn>>, <int>) -> <optional<dyn>>
 //
 // Examples:
 //
-//	tail([1, 2, 3, 4, 5, 6])  // return [2, 3, 4, 5, 6]
-//	tail([6])                 // return []
-//	tail([])                  // return []
+//	tail([1, 2, 3, 4, 5, 6])     // return [2, 3, 4, 5, 6]
+//	tail([6])                    // return []
+//	tail([])                     // return []
+//	tail([1, 2, 3, 4, 5, 6], 2)  // return [3, 4, 5, 6]
+//	tail([6], 2)                 // return []
+//	tail([], 2)                  // return []
 //
-// The conjugate of tail, getting the first element, can be achieved
-// directly using list indexing, for example if a is [1, 2, 3, 4, 5, 6]
-// and b is []:
+// The conjugate of the single parameter tail call, getting the first element,
+// can be achieved directly using list indexing, for example if a is
+// [1, 2, 3, 4, 5, 6] and b is []:
 //
 //	a[?0]  // return 1
 //	b[?0]  // return optional.none
+//
+// The conjugate of the two parameter tail call, getting the first n elements,
+// can be achieved by using the front function.
 //
 // # Values
 //
@@ -368,6 +388,15 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 			),
 		),
 
+		cel.Function("front",
+			cel.Overload(
+				"front_list_int",
+				[]*cel.Type{listV, cel.IntType},
+				listV,
+				cel.BinaryBinding(catch(frontN)),
+			),
+		),
+
 		cel.Function("keys",
 			cel.MemberOverload(
 				"map_keys",
@@ -432,6 +461,12 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 				listV,
 				cel.UnaryBinding(catch(tail)),
 			),
+			cel.Overload(
+				"tail_list_int",
+				[]*cel.Type{listV, cel.IntType},
+				listV,
+				cel.BinaryBinding(catch(tailN)),
+			),
 		),
 
 		cel.Function("values",
@@ -495,6 +530,28 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 
 func (collectionsLib) ProgramOptions() []cel.ProgramOption { return nil }
 
+func frontN(arg0, arg1 ref.Val) ref.Val {
+	obj := arg0
+	l, ok := obj.(traits.Lister)
+	if !ok {
+		return types.ValOrErr(obj, "no such overload")
+	}
+	until, ok := arg1.(types.Int)
+	if !ok {
+		return types.ValOrErr(until, "no such overload")
+	}
+	if l.Size() == types.IntZero {
+		return arg0
+	}
+	t := make([]ref.Val, 0, until)
+	it := l.Iterator()
+	for it.HasNext() == types.True && until > 0 {
+		t = append(t, it.Next())
+		until--
+	}
+	return types.NewRefValList(types.DefaultTypeAdapter, t)
+}
+
 func tail(arg ref.Val) ref.Val {
 	obj := arg
 	l, ok := obj.(traits.Lister)
@@ -512,6 +569,36 @@ func tail(arg ref.Val) ref.Val {
 		if head {
 			it.Next()
 			head = false
+			continue
+		}
+		t = append(t, it.Next())
+	}
+	return types.NewRefValList(types.DefaultTypeAdapter, t)
+}
+
+func tailN(arg0, arg1 ref.Val) ref.Val {
+	obj := arg0
+	l, ok := obj.(traits.Lister)
+	if !ok {
+		return types.ValOrErr(obj, "no such overload")
+	}
+	after, ok := arg1.(types.Int)
+	if !ok {
+		return types.ValOrErr(after, "no such overload")
+	}
+	n := l.Size().(types.Int)
+	if n == 0 {
+		return arg0
+	}
+	if n <= after {
+		return types.NewRefValList(types.DefaultTypeAdapter, []ref.Val{})
+	}
+	t := make([]ref.Val, 0, n-after)
+	it := l.Iterator()
+	for it.HasNext() == types.True {
+		if after > 0 {
+			it.Next()
+			after--
 			continue
 		}
 		t = append(t, it.Next())

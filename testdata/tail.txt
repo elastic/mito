@@ -1,0 +1,79 @@
+mito -data state.json src.cel
+! stderr .
+cmp stdout want.txt
+
+-- state.json --
+{"list": [1, 2, 3, 4, 5]}
+-- src.cel --
+{
+	"lisp": {"head": state.list[?0], "tail": tail(state.list)},
+	"00": {"front": front(state.list, 0), "tail": tail(state.list, 0)},
+	"02": {"front": front(state.list, 2), "tail": tail(state.list, 2)},
+	"04": {"front": front(state.list, 4), "tail": tail(state.list, 4)},
+	"05": {"front": front(state.list, 5), "tail": tail(state.list, 5)},
+	"10": {"front": front(state.list, 10), "tail": tail(state.list, 10)},
+}
+-- want.txt --
+{
+	"00": {
+		"front": [],
+		"tail": [
+			1,
+			2,
+			3,
+			4,
+			5
+		]
+	},
+	"02": {
+		"front": [
+			1,
+			2
+		],
+		"tail": [
+			3,
+			4,
+			5
+		]
+	},
+	"04": {
+		"front": [
+			1,
+			2,
+			3,
+			4
+		],
+		"tail": [
+			5
+		]
+	},
+	"05": {
+		"front": [
+			1,
+			2,
+			3,
+			4,
+			5
+		],
+		"tail": []
+	},
+	"10": {
+		"front": [
+			1,
+			2,
+			3,
+			4,
+			5
+		],
+		"tail": []
+	},
+	"lisp": {
+		"head": 1,
+		"tail": [
+			2,
+			3,
+			4,
+			5
+		]
+	}
+}
