@@ -216,6 +216,22 @@ import (
 //	min([1,2,3,4,5,6,7])   // return 1
 //	min(1,7)               // return 1
 //
+// # Sum
+//
+// Returns the sum of a list of int or list of double:
+//
+//	<list<int>>.sum() -> <int>
+//	sum(<list<int>>) -> <int>
+//	<list<double>>.sum() -> <double>
+//	sum(<list<double>>) -> <double>
+//
+// sum([]) or sum with a list of mixed int and double will return an error.
+//
+// Examples:
+//
+//	[1,2,3,4,5,6,7].sum()  // return 28
+//	sum([1,2,3,4,5,6,7])   // return 28
+//
 // # Tail
 //
 // Returns the elements of a list after the first element, or if an integer
@@ -451,6 +467,21 @@ func (collectionsLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{typeV, typeV},
 				typeV,
 				cel.BinaryBinding(minDiadic),
+			),
+		),
+
+		cel.Function("sum",
+			cel.MemberOverload(
+				"list_sum",
+				[]*cel.Type{listV},
+				typeV,
+				cel.UnaryBinding(catch(sumList)),
+			),
+			cel.Overload(
+				"sum_list",
+				[]*cel.Type{listV},
+				typeV,
+				cel.UnaryBinding(catch(sumList)),
 			),
 		),
 
@@ -1017,6 +1048,46 @@ func collateFieldPath(arg ref.Val, path types.String) []ref.Val {
 	}
 
 	return collation
+}
+
+func sumList(arg ref.Val) ref.Val {
+	list, ok := arg.(traits.Lister)
+	if !ok {
+		return types.NoSuchOverloadErr()
+	}
+	if list.Size() == types.IntZero {
+		return types.NewErr("no sum of empty list")
+	}
+
+	var (
+		iSum             int
+		fSum             float64
+		hasInt, hasFloat bool
+	)
+	it := list.Iterator()
+	for i := 0; it.HasNext() == types.True; i++ {
+		elem := it.Next()
+		switch elem := elem.(type) {
+		case types.Double:
+			if hasInt {
+				return types.NewErr("no sum of mixed int and double: first mismatch at index %d", i)
+			}
+			hasFloat = true
+			fSum += float64(elem)
+		case types.Int:
+			if hasFloat {
+				return types.NewErr("no sum of mixed int and double: first mismatch at index %d", i)
+			}
+			hasInt = true
+			iSum += int(elem)
+		default:
+			return types.NewErr("no sum of list containing %T", elem)
+		}
+	}
+	if hasInt {
+		return types.Int(iSum)
+	}
+	return types.Double(fSum)
 }
 
 type comparer interface {

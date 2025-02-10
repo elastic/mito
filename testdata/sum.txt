@@ -1,0 +1,42 @@
+mito -use collections,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	[1,2,3,4,5,6,7].sum(),
+	type([1,2,3,4,5,6,7].sum()) == type(int(0)),
+	[1.0,2.0,3.0,4.0,5.0,6.0,7.0].sum(),
+	type([1.0,2.0,3.0,4.0,5.0,6.0,7.0].sum()) == type(double(0)),
+	sum([1,2,3,4,5,6,7]),
+	sum([1.0,2.0,3.0,4.0,5.0,6.0,7.0]),
+
+	try([1,2,3,4.0,5.0,6.0,7.0].sum()),
+	try([1.0,2.0,3.0,4,5,6,7].sum()),
+	try(sum([1,2,3,4.0,5.0,6.0,7.0])),
+	try(sum([1.0,2.0,3.0,4,5,6,7])),
+	try([1,2,3,"four",5,6,7].sum()),
+	try([1.0,2.0,3.0,"four",5.0,6.0,7.0].sum()),
+	try(sum([1,2,3,"four",5,6,7])),
+	try(sum([1.0,2.0,3.0,"four",5.0,6.0,7.0])),
+
+	try(sum([])),
+]
+-- want.txt --
+[
+	28,
+	true,
+	28,
+	true,
+	28,
+	28,
+	"no sum of mixed int and double: first mismatch at index 3",
+	"no sum of mixed int and double: first mismatch at index 3",
+	"no sum of mixed int and double: first mismatch at index 3",
+	"no sum of mixed int and double: first mismatch at index 3",
+	"no sum of list containing types.String",
+	"no sum of list containing types.String",
+	"no sum of list containing types.String",
+	"no sum of list containing types.String",
+	"no sum of empty list"
+]
