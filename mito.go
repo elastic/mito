@@ -205,7 +205,7 @@ func Main() int {
 		res, val, dump, c, err := eval(string(b), root, input, *fold, *dumpState != "", *coverage != "", libs...)
 		if err := cov.Merge(c); err != nil {
 			fmt.Fprintf(os.Stderr, "internal error merging coverage: %v\n", err)
-			return 2
+			return 1
 		}
 		if *dumpState == "always" {
 			fmt.Fprint(os.Stderr, dump)
@@ -215,7 +215,7 @@ func Main() int {
 				fmt.Fprint(os.Stderr, dump)
 			}
 			fmt.Fprintln(os.Stderr, err)
-			return 1
+			return 2
 		}
 		fmt.Println(res)
 
@@ -234,7 +234,7 @@ func Main() int {
 		f, err := os.Create(*coverage)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "internal error opening coverage file: %v\n", err)
-			return 2
+			return 1
 		}
 		defer func() {
 			f.Sync()
@@ -243,7 +243,7 @@ func Main() int {
 		_, err = f.WriteString(cov.String() + "\n")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "internal error writing coverage file: %v\n", err)
-			return 2
+			return 1
 		}
 	}
 	return 0
