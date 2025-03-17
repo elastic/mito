@@ -133,7 +133,7 @@ func Main() int {
 				fmt.Fprintln(os.Stderr, err)
 				return 2
 			}
-			libs = append(libs, xml)
+			libMap["xml"] = xml
 		}
 		if cfg.Auth != nil {
 			switch auth := cfg.Auth; {
@@ -157,6 +157,13 @@ func Main() int {
 	}
 	if libMap["http"] == nil {
 		libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), nil, nil)
+	}
+	if libMap["xml"] == nil {
+		var err error
+		libMap["xml"], err = lib.XML(nil, nil)
+		if err != nil {
+			return 2
+		}
 	}
 	if *use == "all" {
 		for _, l := range libMap {
@@ -326,6 +333,7 @@ var (
 		"limit":       lib.Limit(limitPolicies),
 		"strings":     lib.Strings(),
 		"printf":      lib.Printf(),
+		"xml":         nil, // This will be populated by Main.
 	}
 
 	mimetypes = map[string]interface{}{
