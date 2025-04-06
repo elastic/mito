@@ -39,6 +39,11 @@ type Config struct {
 	// Headers already set by Auth or CEL program evaluation are not
 	// overwritten.
 	HTTPHeaders http.Header `yaml:"http_headers"`
+	// MaxBodySize is the largest response body that will be
+	// accepted by an HTTP client. If MaxBodySize is zero there is
+	// no limit. Bodies greater than the limit will result in a
+	// lib.ErrBodyTooBig error being returned by the request.
+	MaxBodySize int64 `yaml:"max_body_size"`
 	// MaxExecutions is the maximum number of want_more executions for a single
 	// run of mito. This value is overridden by the -max_executions command
 	// line flag.

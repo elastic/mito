@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -316,10 +317,16 @@ type HTTPOptions struct {
 	// in Headers are not set if they would overwrite existing
 	// headers in the request.
 	Headers http.Header
+
+	// MaxBodySize is the largest response body that will be
+	// accepted by the client. If MaxBodySize is zero there is
+	// no limit. Bodies greater than the limit will result in an
+	// ErrBodyTooBig error being returned by the request.
+	MaxBodySize int64
 }
 
 func (o HTTPOptions) IsZero() bool {
-	return o.Limiter == nil && o.BasicAuth == nil && o.Headers == nil
+	return o.Limiter == nil && o.BasicAuth == nil && o.Headers == nil && o.MaxBodySize == 0
 }
 
 type httpLib struct {
@@ -359,7 +366,7 @@ func (l httpLib) CompileOptions() []cel.EnvOption {
 				"get_request_string",
 				[]*cel.Type{cel.StringType},
 				mapStringDyn,
-				cel.UnaryBinding(catch(newGetRequest)),
+				cel.UnaryBinding(catch(l.newGetRequest)),
 			),
 		),
 
@@ -382,13 +389,13 @@ func (l httpLib) CompileOptions() []cel.EnvOption {
 				"post_request_string_string_bytes",
 				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
 				mapStringDyn,
-				cel.FunctionBinding(catch(newPostRequest)),
+				cel.FunctionBinding(catch(l.newPostRequest)),
 			),
 			cel.Overload(
 				"post_request_string_string_string",
 				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType},
 				mapStringDyn,
-				cel.FunctionBinding(catch(newPostRequest)),
+				cel.FunctionBinding(catch(l.newPostRequest)),
 			),
 		),
 
@@ -397,19 +404,19 @@ func (l httpLib) CompileOptions() []cel.EnvOption {
 				"request_string_string",
 				[]*cel.Type{cel.StringType, cel.StringType},
 				mapStringDyn,
-				cel.BinaryBinding(catch(newRequest)),
+				cel.BinaryBinding(catch(l.newRequest)),
 			),
 			cel.Overload(
 				"request_string_string_bytes",
 				[]*cel.Type{cel.StringType, cel.StringType, cel.BytesType},
 				mapStringDyn,
-				cel.FunctionBinding(catch(newRequestBody)),
+				cel.FunctionBinding(catch(l.newRequestBody)),
 			),
 			cel.Overload(
 				"request_string_string_string",
 				[]*cel.Type{cel.StringType, cel.StringType, cel.StringType},
 				mapStringDyn,
-				cel.FunctionBinding(catch(newRequestBody)),
+				cel.FunctionBinding(catch(l.newRequestBody)),
 			),
 		),
 
@@ -482,7 +489,7 @@ func (l httpLib) doHead(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	rm, err := respToMap(resp)
+	rm, err := respToMap(resp, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -514,7 +521,7 @@ func (l httpLib) doGet(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	rm, err := respToMap(resp)
+	rm, err := respToMap(resp, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -533,8 +540,8 @@ func (l httpLib) get(url types.String) (*http.Response, error) {
 	return l.client.Do(req)
 }
 
-func newGetRequest(url ref.Val) ref.Val {
-	return newRequestBody(types.String("GET"), url)
+func (l httpLib) newGetRequest(url ref.Val) ref.Val {
+	return l.newRequestBody(types.String("GET"), url)
 }
 
 func (l httpLib) doPost(args ...ref.Val) ref.Val {
@@ -570,7 +577,7 @@ func (l httpLib) doPost(args ...ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	rm, err := respToMap(resp)
+	rm, err := respToMap(resp, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -590,7 +597,7 @@ func (l httpLib) post(url, content types.String, body io.Reader) (*http.Response
 	return l.client.Do(req)
 }
 
-func newPostRequest(args ...ref.Val) ref.Val {
+func (l httpLib) newPostRequest(args ...ref.Val) ref.Val {
 	if len(args) != 3 {
 		return types.NewErr("no such overload for post request")
 	}
@@ -600,7 +607,7 @@ func newPostRequest(args ...ref.Val) ref.Val {
 	}
 	url := args[0]
 	body := args[2]
-	req, err := makeRequestBody(types.String("POST"), url, body)
+	req, err := makeRequestBody(l.options.MaxBodySize, types.String("POST"), url, body)
 	if err != nil {
 		return err
 	}
@@ -613,19 +620,19 @@ func newPostRequest(args ...ref.Val) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(req)
 }
 
-func newRequest(method, url ref.Val) ref.Val {
-	return newRequestBody(method, url)
+func (l httpLib) newRequest(method, url ref.Val) ref.Val {
+	return l.newRequestBody(method, url)
 }
 
-func newRequestBody(args ...ref.Val) ref.Val {
-	req, err := makeRequestBody(args...)
+func (l httpLib) newRequestBody(args ...ref.Val) ref.Val {
+	req, err := makeRequestBody(l.options.MaxBodySize, args...)
 	if err != nil {
 		return err
 	}
 	return types.DefaultTypeAdapter.NativeToValue(req)
 }
 
-func makeRequestBody(args ...ref.Val) (map[string]interface{}, ref.Val) {
+func makeRequestBody(max int64, args ...ref.Val) (map[string]interface{}, ref.Val) {
 	if len(args) < 2 {
 		return nil, types.NewErr("no such overload for request")
 	}
@@ -660,14 +667,14 @@ func makeRequestBody(args ...ref.Val) (map[string]interface{}, ref.Val) {
 	if err != nil {
 		return nil, types.NewErr("%s", err)
 	}
-	reqMap, err := reqToMap(req, url, body)
+	reqMap, err := reqToMap(req, url, body, max)
 	if err != nil {
 		return nil, types.NewErr("%s", err)
 	}
 	return reqMap, nil
 }
 
-func reqToMap(req *http.Request, url, body ref.Val) (map[string]interface{}, error) {
+func reqToMap(req *http.Request, url, body ref.Val, max int64) (map[string]interface{}, error) {
 	rm := map[string]interface{}{
 		"Method":        req.Method,
 		"URL":           url,
@@ -692,7 +699,7 @@ func reqToMap(req *http.Request, url, body ref.Val) (map[string]interface{}, err
 		rm["Trailer"] = req.Trailer
 	}
 	if req.Response != nil {
-		resp, err := respToMap(req.Response)
+		resp, err := respToMap(req.Response, max)
 		if err != nil {
 			return nil, err
 		}
@@ -701,7 +708,7 @@ func reqToMap(req *http.Request, url, body ref.Val) (map[string]interface{}, err
 	return rm, nil
 }
 
-func respToMap(resp *http.Response) (map[string]interface{}, error) {
+func respToMap(resp *http.Response, max int64) (map[string]interface{}, error) {
 	rm := map[string]interface{}{
 		"Status":        resp.Status,
 		"StatusCode":    resp.StatusCode,
@@ -714,7 +721,7 @@ func respToMap(resp *http.Response) (map[string]interface{}, error) {
 		"Uncompressed":  resp.Uncompressed,
 	}
 	var buf bytes.Buffer
-	_, err := io.Copy(&buf, resp.Body)
+	_, err := io.Copy(&buf, limitBody(resp.Body, max))
 	resp.Body.Close()
 	if err != nil {
 		return nil, err
@@ -727,7 +734,7 @@ func respToMap(resp *http.Response) (map[string]interface{}, error) {
 		rm["Trailer"] = resp.Trailer
 	}
 	if resp.Request != nil {
-		req, err := reqToMap(resp.Request, types.String(resp.Request.URL.String()), nil)
+		req, err := reqToMap(resp.Request, types.String(resp.Request.URL.String()), nil, max)
 		if err != nil {
 			return nil, err
 		}
@@ -803,7 +810,7 @@ func (l httpLib) doRequest(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	respm, err := respToMap(resp)
+	respm, err := respToMap(resp, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -1107,3 +1114,35 @@ func addHeaders(dst *http.Request, h http.Header) {
 		dst.Header[k] = v
 	}
 }
+
+// ErrBodyTooBig is returned by HTTP requests than are responded to with
+// a body that is bigger than [HTTPOptions.MaxBodySize] if it is non zero.
+var ErrBodyTooBig = errors.New("response body too big")
+
+// limitBody returns an io.ReadCloser that reads from r,
+// but stops with ErrBodyTooBig after n bytes unless n is zero.
+func limitBody(r io.ReadCloser, n int64) io.ReadCloser {
+	if n == 0 {
+		return r
+	}
+	return &limitedReadCloser{r, n}
+}
+
+type limitedReadCloser struct {
+	rc io.ReadCloser
+	n  int64
+}
+
+func (l *limitedReadCloser) Read(p []byte) (n int, err error) {
+	if l.n <= 0 {
+		return 0, ErrBodyTooBig
+	}
+	if int64(len(p)) > l.n {
+		p = p[:l.n]
+	}
+	n, err = l.rc.Read(p)
+	l.n -= int64(n)
+	return
+}
+
+func (l *limitedReadCloser) Close() error { return l.rc.Close() }
