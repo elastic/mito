@@ -135,25 +135,33 @@ func Main() int {
 			}
 			libMap["xml"] = xml
 		}
+		var client *http.Client
+		httpOptions := lib.HTTPOptions{
+			Headers: cfg.HTTPHeaders,
+		}
 		if cfg.Auth != nil {
 			switch auth := cfg.Auth; {
 			case auth.Basic != nil && auth.OAuth2 != nil:
 				fmt.Fprintln(os.Stderr, "configured basic authentication and OAuth2")
 				return 2
 			case auth.Basic != nil:
-				libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), nil, auth.Basic)
+				httpOptions.BasicAuth = auth.Basic
 			case auth.OAuth2 != nil:
-				client, err := oAuth2Client(*auth.OAuth2)
+				client, err = oAuth2Client(*auth.OAuth2)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return 2
 				}
-				libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(client, *insecure), *logTrace, *maxTraceBody), nil, nil)
 			}
+		}
+		if client != nil || !httpOptions.IsZero() {
+			ctx := context.Background()
+			libMap["http"] = lib.HTTPWithContextOpts(ctx, traceReqs(setClientInsecure(client, *insecure), *logTrace, *maxTraceBody), httpOptions)
 		}
 		if *maxExecutions == -1 && cfg.MaxExecutions != nil {
 			*maxExecutions = *cfg.MaxExecutions
 		}
+
 	}
 	if libMap["http"] == nil {
 		libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), nil, nil)

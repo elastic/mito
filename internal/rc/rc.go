@@ -19,6 +19,7 @@
 package rc
 
 import (
+	"net/http"
 	"net/url"
 
 	"github.com/elastic/mito/lib"
@@ -34,6 +35,10 @@ type Config struct {
 	XSDs map[string]string `yaml:"xsd"`
 	// Auth is the authentication configuration for HTTP requests.
 	Auth *AuthConfig `yaml:"auth"`
+	// HTTPHeaders is the set of headers to include in all HTTP requests.
+	// Headers already set by Auth or CEL program evaluation are not
+	// overwritten.
+	HTTPHeaders http.Header `yaml:"http_headers"`
 	// MaxExecutions is the maximum number of want_more executions for a single
 	// run of mito. This value is overridden by the -max_executions command
 	// line flag.
