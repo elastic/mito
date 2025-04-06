@@ -309,6 +309,17 @@ type HTTPOptions struct {
 	// BasicAuth is the Basic Authentication configuration
 	// for direct HEAD, GET and POST method calls.
 	BasicAuth *BasicAuth
+
+	// Headers is the set of headers to be added to an HTTP
+	// request. Headers are added to all method calls for
+	// both direct and constructed requests. Headers values
+	// in Headers are not set if they would overwrite existing
+	// headers in the request.
+	Headers http.Header
+}
+
+func (o HTTPOptions) IsZero() bool {
+	return o.Limiter == nil && o.BasicAuth == nil && o.Headers == nil
 }
 
 type httpLib struct {
@@ -486,6 +497,7 @@ func (l httpLib) head(url types.String) (*http.Response, error) {
 	if l.options.BasicAuth != nil {
 		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
+	addHeaders(req, l.options.Headers)
 	return l.client.Do(req)
 }
 
@@ -517,6 +529,7 @@ func (l httpLib) get(url types.String) (*http.Response, error) {
 	if l.options.BasicAuth != nil {
 		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
+	addHeaders(req, l.options.Headers)
 	return l.client.Do(req)
 }
 
@@ -573,6 +586,7 @@ func (l httpLib) post(url, content types.String, body io.Reader) (*http.Response
 		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
 	req.Header.Set("Content-Type", string(content))
+	addHeaders(req, l.options.Headers)
 	return l.client.Do(req)
 }
 
@@ -784,6 +798,7 @@ func (l httpLib) doRequest(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
+	addHeaders(req, l.options.Headers)
 	resp, err := l.client.Do(req)
 	if err != nil {
 		return types.NewErr("%s", err)
@@ -1081,5 +1096,14 @@ func formatQuery(arg ref.Val) ref.Val {
 		return types.String(url.Values(q).Encode())
 	default:
 		return types.NewErr("invalid type for format_query: %T", q)
+	}
+}
+
+func addHeaders(dst *http.Request, h http.Header) {
+	for k, v := range h {
+		if _, ok := dst.Header[k]; ok {
+			continue
+		}
+		dst.Header[k] = v
 	}
 }
