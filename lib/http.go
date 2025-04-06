@@ -275,31 +275,46 @@ import (
 //
 //	line=25&page=2"
 func HTTP(client *http.Client, limit *rate.Limiter, auth *BasicAuth) cel.EnvOption {
-	return HTTPWithContext(context.Background(), client, limit, auth)
+	return HTTPWithContextOpts(context.Background(), client, HTTPOptions{Limiter: limit, BasicAuth: auth})
 }
 
 // HTTPWithContext returns a cel.EnvOption to configure extended functions
 // for HTTP requests that include a context.Context in network requests.
 func HTTPWithContext(ctx context.Context, client *http.Client, limit *rate.Limiter, auth *BasicAuth) cel.EnvOption {
+	return HTTPWithContextOpts(ctx, client, HTTPOptions{Limiter: limit, BasicAuth: auth})
+}
+
+// HTTPWithContextOps returns a cel.EnvOption to configure extended functions
+// for HTTP requests that include a context.Context in network requests and
+// includes extended client options.
+func HTTPWithContextOpts(ctx context.Context, client *http.Client, options HTTPOptions) cel.EnvOption {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	if limit == nil {
-		limit = rate.NewLimiter(rate.Inf, 0)
+	if options.Limiter == nil {
+		options.Limiter = rate.NewLimiter(rate.Inf, 0)
 	}
 	return cel.Lib(httpLib{
-		client: client,
-		limit:  limit,
-		auth:   auth,
-		ctx:    ctx,
+		client:  client,
+		options: options,
+		ctx:     ctx,
 	})
 }
 
+// HTTPOptions holds HTTP lib configuration options.
+type HTTPOptions struct {
+	// Limiter is the rate limiter used by HTTP clients.
+	Limiter *rate.Limiter
+
+	// BasicAuth is the Basic Authentication configuration
+	// for direct HEAD, GET and POST method calls.
+	BasicAuth *BasicAuth
+}
+
 type httpLib struct {
-	client *http.Client
-	limit  *rate.Limiter
-	auth   *BasicAuth
-	ctx    context.Context
+	client  *http.Client
+	ctx     context.Context
+	options HTTPOptions
 }
 
 // BasicAuth is used to populate the Authorization header to use HTTP
@@ -448,7 +463,7 @@ func (l httpLib) doHead(arg ref.Val) ref.Val {
 	if !ok {
 		return types.ValOrErr(url, "no such overload for head")
 	}
-	err := l.limit.Wait(context.TODO())
+	err := l.options.Limiter.Wait(context.TODO())
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -468,8 +483,8 @@ func (l httpLib) head(url types.String) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if l.auth != nil {
-		req.SetBasicAuth(l.auth.Username, l.auth.Password)
+	if l.options.BasicAuth != nil {
+		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
 	return l.client.Do(req)
 }
@@ -479,7 +494,7 @@ func (l httpLib) doGet(arg ref.Val) ref.Val {
 	if !ok {
 		return types.ValOrErr(url, "no such overload for get")
 	}
-	err := l.limit.Wait(context.TODO())
+	err := l.options.Limiter.Wait(context.TODO())
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -499,8 +514,8 @@ func (l httpLib) get(url types.String) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if l.auth != nil {
-		req.SetBasicAuth(l.auth.Username, l.auth.Password)
+	if l.options.BasicAuth != nil {
+		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
 	return l.client.Do(req)
 }
@@ -534,7 +549,7 @@ func (l httpLib) doPost(args ...ref.Val) ref.Val {
 	default:
 		return types.NewErr("invalid type for post body: %s", text.Type())
 	}
-	err := l.limit.Wait(context.TODO())
+	err := l.options.Limiter.Wait(context.TODO())
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -554,8 +569,8 @@ func (l httpLib) post(url, content types.String, body io.Reader) (*http.Response
 	if err != nil {
 		return nil, err
 	}
-	if l.auth != nil {
-		req.SetBasicAuth(l.auth.Username, l.auth.Password)
+	if l.options.BasicAuth != nil {
+		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
 	req.Header.Set("Content-Type", string(content))
 	return l.client.Do(req)
@@ -765,7 +780,7 @@ func (l httpLib) doRequest(arg ref.Val) ref.Val {
 	}
 	// Recover the context lost during serialisation to JSON.
 	req = req.WithContext(l.ctx)
-	err = l.limit.Wait(l.ctx)
+	err = l.options.Limiter.Wait(l.ctx)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
