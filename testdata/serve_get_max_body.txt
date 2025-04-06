@@ -1,0 +1,17 @@
+serve hello.text
+expand src_var.cel src.cel
+cmpenv src.cel src_var.cel 
+
+mito -cfg cfg.yaml -use http,try src.cel
+cmp stdout want.txt
+! stderr .
+
+-- cfg.yaml --
+max_body_size: 3
+-- hello.text --
+hello
+-- src_var.cel --
+// $URL is set by the serve command and ${URL} is expanded by the expand command.
+try(get("${URL}"))
+-- want.txt --
+"response body too big"

@@ -137,7 +137,8 @@ func Main() int {
 		}
 		var client *http.Client
 		httpOptions := lib.HTTPOptions{
-			Headers: cfg.HTTPHeaders,
+			Headers:     cfg.HTTPHeaders,
+			MaxBodySize: cfg.MaxBodySize,
 		}
 		if cfg.Auth != nil {
 			switch auth := cfg.Auth; {
