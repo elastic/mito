@@ -1,4 +1,4 @@
-mito -use crypto src.cel
+mito src.cel
 ! stderr .
 cmp stdout want.txt
 
@@ -6,9 +6,17 @@ cmp stdout want.txt
 [
 	"hello world".hex(),
 	hex("hello world"),
+	"68656c6c6f20776f726c64".hex_decode(),
+	hex_decode("68656c6c6f20776f726c64"),
+	string("68656c6c6f20776f726c64".hex_decode()),
+	string(hex_decode("68656c6c6f20776f726c64")),
 ]
 -- want.txt --
 [
 	"68656c6c6f20776f726c64",
-	"68656c6c6f20776f726c64"
+	"68656c6c6f20776f726c64",
+	"aGVsbG8gd29ybGQ=",
+	"aGVsbG8gd29ybGQ=",
+	"hello world",
+	"hello world"
 ]
