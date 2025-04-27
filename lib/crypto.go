@@ -96,6 +96,17 @@ import (
 //
 //	"hello world".hex()  // return "68656c6c6f20776f726c64"
 //
+// # Hex Decode
+//
+// Returns a bytes from the hexadecimal representation in a string:
+//
+//	hex_decode(<string>) -> <bytes>
+//	<string>.hex_decode() -> <bytes>
+//
+// Examples:
+//
+//	"68656c6c6f20776f726c64".hex_decode()  // return b"hello world"
+//
 // # MD5
 //
 // Returns a bytes of the md5 hash of a string or bytes:
@@ -282,6 +293,21 @@ func (cryptoLib) CompileOptions() []cel.EnvOption {
 			),
 		),
 
+		cel.Function("hex_decode",
+			cel.MemberOverload(
+				"string_hex_decode",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(hexDecode),
+			),
+			cel.Overload(
+				"hex_decode_string",
+				[]*cel.Type{cel.StringType},
+				cel.BytesType,
+				cel.UnaryBinding(hexDecode),
+			),
+		),
+
 		cel.Function("md5",
 			cel.MemberOverload(
 				"bytes_md5",
@@ -457,6 +483,19 @@ func hexEncode(val ref.Val) ref.Val {
 		return types.String(hex.EncodeToString(val))
 	case types.String:
 		return types.String(hex.EncodeToString([]byte(val)))
+	default:
+		return types.NewErr("invalid type for hex: %s", val.Type())
+	}
+}
+
+func hexDecode(val ref.Val) ref.Val {
+	switch val := val.(type) {
+	case types.String:
+		b, err := hex.DecodeString(string(val))
+		if err != nil {
+			return types.NewErr("invalid hex encoding: %w", err)
+		}
+		return types.Bytes(b)
 	default:
 		return types.NewErr("invalid type for hex: %s", val.Type())
 	}
