@@ -34,7 +34,7 @@ import (
 // Collections returns a cel.EnvOption to configure extended functions for
 // handling collections.
 //
-// As (Macro)
+// # As (Macro)
 //
 // The as macro is syntactic sugar for [val].map(var, function)[0].
 //
