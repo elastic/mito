@@ -77,6 +77,20 @@ import (
 //	"11:17AM".parse_time([time_layout.RFC3339,time_layout.Kitchen]) // return <timestamp>
 //	"11:17AM".parse_time(time_layout.RFC3339)                       // return error
 //
+// # Round
+//
+// Round returns the timestamp or duration rounded to the nearest multiple of the
+// duration parameter using [time.Time.Round] for timestamps and [time.Duration.Round]
+// for durations:
+//
+//	<timestamp>.round(<duration>) -> <timestamp>
+//	<duration>.round(<duration>) -> <duration>
+//
+// Examples:
+//
+//	duration("42s").round(duration("10s"))  // return "40s"
+//	now.round(duration("1h"))               // return "2022-03-30T11:00:00Z"
+//
 // # Global Variables
 //
 // A collection of global variable are provided to give access to the start
@@ -141,13 +155,25 @@ func (timeLib) CompileOptions() []cel.EnvOption {
 				cel.TimestampType,
 				cel.BinaryBinding(parseTimeWithLayout),
 			),
-		),
-		cel.Function("parse_time",
 			cel.MemberOverload(
 				"string_parse_time_list_string",
 				[]*cel.Type{cel.StringType, listString},
 				cel.TimestampType,
 				cel.BinaryBinding(parseTimeWithLayouts),
+			),
+		),
+		cel.Function("round",
+			cel.MemberOverload(
+				"duration_round_duration_duration",
+				[]*cel.Type{cel.DurationType, cel.DurationType},
+				cel.DurationType,
+				cel.BinaryBinding(roundDuration),
+			),
+			cel.MemberOverload(
+				"time_round_duration_time",
+				[]*cel.Type{cel.TimestampType, cel.DurationType},
+				cel.TimestampType,
+				cel.BinaryBinding(roundTimestamp),
 			),
 		),
 	}
@@ -238,4 +264,28 @@ func parseTimeWithLayouts(arg, layout ref.Val) ref.Val {
 		return types.Timestamp{Time: t}
 	}
 	return types.NewErr("failed to parse %s with any provided layout", obj)
+}
+
+func roundDuration(arg, layout ref.Val) ref.Val {
+	d, ok := arg.(types.Duration)
+	if !ok {
+		return types.ValOrErr(d, "no such overload for duration round: %s", arg.Type())
+	}
+	res, ok := layout.(types.Duration)
+	if !ok {
+		return types.ValOrErr(res, "no such overload for duration round: %s", layout.Type())
+	}
+	return types.Duration{Duration: d.Duration.Round(res.Duration)}
+}
+
+func roundTimestamp(arg, layout ref.Val) ref.Val {
+	t, ok := arg.(types.Timestamp)
+	if !ok {
+		return types.ValOrErr(t, "no such overload for timestamp round: %s", arg.Type())
+	}
+	res, ok := layout.(types.Duration)
+	if !ok {
+		return types.ValOrErr(res, "no such overload for timestamp round: %s", layout.Type())
+	}
+	return types.Timestamp{Time: t.Time.Round(res.Duration)}
 }

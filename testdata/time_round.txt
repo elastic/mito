@@ -1,0 +1,14 @@
+mito -use time src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{
+	"42s": duration("42s").round(duration("10s")),
+	"RFC3339": "2006-01-02T15:04:05Z".parse_time(time_layout.RFC3339).round(duration("1h")),
+}
+-- want.txt --
+{
+	"42s": "40s",
+	"RFC3339": "2006-01-02T15:00:00Z"
+}
