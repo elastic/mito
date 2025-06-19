@@ -142,11 +142,13 @@ func Main() int {
 		}
 		if cfg.Auth != nil {
 			switch auth := cfg.Auth; {
-			case auth.Basic != nil && auth.OAuth2 != nil:
-				fmt.Fprintln(os.Stderr, "configured basic authentication and OAuth2")
+			case authsCount(auth) > 1:
+				fmt.Fprintln(os.Stderr, "configured more than one authentication method")
 				return 2
 			case auth.Basic != nil:
 				httpOptions.BasicAuth = auth.Basic
+			case auth.Token != nil:
+				httpOptions.TokenAuth = auth.Token
 			case auth.OAuth2 != nil:
 				client, err = oAuth2Client(*auth.OAuth2)
 				if err != nil {
@@ -256,6 +258,20 @@ func Main() int {
 		}
 	}
 	return 0
+}
+
+func authsCount(auth *rc.AuthConfig) int {
+	var n int
+	if auth.Basic != nil {
+		n++
+	}
+	if auth.Token != nil {
+		n++
+	}
+	if auth.OAuth2 != nil {
+		n++
+	}
+	return n
 }
 
 func printVersion() int {

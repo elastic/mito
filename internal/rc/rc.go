@@ -54,6 +54,8 @@ type Config struct {
 type AuthConfig struct {
 	// Basic is a Basic Authentication configuration.
 	Basic *lib.BasicAuth `yaml:"basic"`
+	// Token is a token authentication configuration.
+	Token *lib.TokenAuth `yaml:"token"`
 	// OAuth2 is an OAuth2.0 authentication configuration.
 	OAuth2 *OAuth2Config `yaml:"oauth2"`
 }
