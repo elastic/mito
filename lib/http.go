@@ -42,11 +42,11 @@ import (
 // will be used for the requests and API rate limiting. If client is nil
 // the http.DefaultClient will be used and if limit is nil an non-limiting
 // rate.Limiter will be used. If auth is not nil, the Authorization header
-// is populated for Basic Authentication in requests constructed for direct
-// HEAD, GET and POST method calls. Explicitly constructed requests used in
-// do_request are not affected by auth. In cases where Basic Authentication
-// is needed for these constructed requests, the basic_authentication method
-// can be used to add the necessary header.
+// is populated for Basic Authentication or token authentication in requests
+// constructed for direct HEAD, GET and POST method calls. Explicitly constructed
+// requests used in do_request are not affected by auth. In cases where Basic
+// Authentication is needed for these constructed requests, the
+// basic_authentication method can be used to add the necessary header.
 //
 // # HEAD
 //
@@ -309,7 +309,17 @@ type HTTPOptions struct {
 
 	// BasicAuth is the Basic Authentication configuration
 	// for direct HEAD, GET and POST method calls.
+	// BasicAuth is incompatible with TokenAuth. It is the
+	// responsibility of client code to ensure they are
+	// not both configured in a single HTTP lib value.
 	BasicAuth *BasicAuth
+
+	// TokenAuth is a token authentication configuration
+	// for direct HEAD, GET and POST method calls.
+	// TokenAuth is incompatible with BasicAuth. It is the
+	// responsibility of client code to ensure they are
+	// not both configured in a single HTTP lib value.
+	TokenAuth *TokenAuth
 
 	// Headers is the set of headers to be added to an HTTP
 	// request. Headers are added to all method calls for
@@ -326,7 +336,7 @@ type HTTPOptions struct {
 }
 
 func (o HTTPOptions) IsZero() bool {
-	return o.Limiter == nil && o.BasicAuth == nil && o.Headers == nil && o.MaxBodySize == 0
+	return o.Limiter == nil && o.BasicAuth == nil && o.TokenAuth == nil && o.Headers == nil && o.MaxBodySize == 0
 }
 
 type httpLib struct {
@@ -340,6 +350,28 @@ type httpLib struct {
 // direct HTTP method calls.
 type BasicAuth struct {
 	Username, Password string
+}
+
+// TokenAuth is used to populate the Authorization header to use HTTP
+// token authentication with the provided token type and token for
+// direct HTTP method calls.
+type TokenAuth struct {
+	Type, Value string
+}
+
+// AddTo adds the token authentication details to h.
+func (a TokenAuth) AddTo(h http.Header) {
+	// This is unfortunate. We cannot return an error on construction
+	// of the httpLib for the case that both BasicAuth and TokenAuth
+	// have been provide due to compatibility constraints in the
+	// HTTPWithContextOpts signature. So just make it possible to set
+	// both in the case that they are both provided.
+	h.Add("Authorization", a.Type+" "+a.Value)
+}
+
+// Set sets the token authentication details in h.
+func (a TokenAuth) Set(h http.Header) {
+	h.Set("Authorization", a.Type+" "+a.Value)
 }
 
 func (l httpLib) CompileOptions() []cel.EnvOption {
@@ -504,6 +536,9 @@ func (l httpLib) head(url types.String) (*http.Response, error) {
 	if l.options.BasicAuth != nil {
 		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
 	}
+	if l.options.TokenAuth != nil {
+		l.options.TokenAuth.AddTo(req.Header)
+	}
 	addHeaders(req, l.options.Headers)
 	return l.client.Do(req)
 }
@@ -535,6 +570,9 @@ func (l httpLib) get(url types.String) (*http.Response, error) {
 	}
 	if l.options.BasicAuth != nil {
 		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
+	}
+	if l.options.TokenAuth != nil {
+		l.options.TokenAuth.AddTo(req.Header)
 	}
 	addHeaders(req, l.options.Headers)
 	return l.client.Do(req)
@@ -591,6 +629,9 @@ func (l httpLib) post(url, content types.String, body io.Reader) (*http.Response
 	}
 	if l.options.BasicAuth != nil {
 		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
+	}
+	if l.options.TokenAuth != nil {
+		l.options.TokenAuth.AddTo(req.Header)
 	}
 	req.Header.Set("Content-Type", string(content))
 	addHeaders(req, l.options.Headers)

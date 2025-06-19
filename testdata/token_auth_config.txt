@@ -1,0 +1,34 @@
+# This test abuses the flexibility of the token auth mechanism to test
+# it by faking a Basic Authentication using the token auth construction.
+# The two cases below are the same as the cases for the basic_auth_config
+# test, but done explicitly.
+
+serve hello.text user password
+expand src_var.cel src.cel
+cmpenv src.cel src_var.cel 
+
+mito -use http -cfg cfg_good.yaml src.cel
+cmp stdout want_good.txt
+
+mito -use http -cfg cfg_bad.yaml src.cel
+cmp stdout want_bad.txt
+
+-- src_var.cel --
+// $URL is set by the serve command and ${URL} is expanded by the expand command.
+string(get("${URL}").Body)
+-- hello.text --
+hello
+-- cfg_good.yaml --
+auth:
+  token:
+    type: Basic
+    value: dXNlcjpwYXNzd29yZA==
+-- want_good.txt --
+"hello\n"
+-- cfg_bad.yaml --
+auth:
+  token:
+    type: Basic
+    value: dXNlcjpsZXRtZWlu
+-- want_bad.txt --
+"password mismatch"
