@@ -1,8 +1,6 @@
 module github.com/elastic/mito
 
-go 1.23.0
-
-toolchain go1.23.7
+go 1.23.10
 
 require (
 	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
