@@ -56,21 +56,6 @@ func TestScripts(t *testing.T) {
 			"serve_tls": serveTLS,
 			"expand":    expand,
 		},
-		Setup: func(e *testscript.Env) error {
-			for _, k := range []string{
-				"AWS_ACCESS_KEY",
-				"AWS_ACCESS_KEY_ID",
-				"AWS_PROFILE",
-				"AWS_SECRET_ACCESS_KEY",
-				"AWS_SECRET_KEY",
-				"AWS_SHARED_CREDENTIALS_FILE",
-			} {
-				if v, ok := os.LookupEnv(k); ok {
-					e.Setenv(k, v)
-				}
-			}
-			return nil
-		},
 	}
 	testscript.Run(t, p)
 }

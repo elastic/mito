@@ -346,7 +346,6 @@ func traceReqs(c *http.Client, trace bool, max int) *http.Client {
 
 var (
 	libMap = map[string]cel.EnvOption{
-		"aws":         lib.AWS(),
 		"collections": lib.Collections(),
 		"crypto":      lib.Crypto(),
 		"json":        lib.JSON(nil),

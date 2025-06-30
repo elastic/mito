@@ -4,7 +4,6 @@ go 1.23.10
 
 require (
 	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
-	github.com/aws/aws-sdk-go v1.55.7
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
 	github.com/google/cel-go v0.25.0
@@ -22,7 +21,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/fatih/color v1.10.0 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
@@ -34,4 +32,9 @@ require (
 	golang.org/x/tools v0.22.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240826202546-f6391c0de4c7 // indirect
+)
+
+retract (
+	v1.20.1 // Self-retraction.
+	v1.20.0 // Used v1 of the AWS v4 signing SDK.
 )
