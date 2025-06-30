@@ -190,7 +190,7 @@ func srcAnnot(ast *cel.Ast, src common.Source, nodes []int64, mark string) strin
 	columns := make(map[int]bool)
 	var snippet string
 	for _, id := range nodes {
-		loc := ast.NativeRep().SourceInfo().GetStopLocation(id)
+		loc := ast.NativeRep().SourceInfo().GetStartLocation(id)
 		if columns[loc.Column()] {
 			continue
 		}
