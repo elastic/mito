@@ -1,0 +1,105 @@
+env AWS_ACCESS_KEY_ID=id
+env AWS_ACCESS_KEY=key
+env AWS_SECRET_ACCESS_KEY=access_secret
+env AWS_SECRET_KEY=secret
+
+mito -use aws,collections,http,time src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	request("GET", "http://www.example.com/"),
+	request("GET", "http://www.example.com/", "request data"),
+	get_request("http://www.example.com/"),
+	post_request("http://www.example.com/", "text/plain", "request data"),
+].map(req,
+	req.sign_aws_from_env({
+		"service" :"service",
+		"region" :"region",
+		"sign_time" :timestamp("2009-11-10T23:00:00Z"),
+		"no_hoist" :false,
+		"no_escape" :false,
+		"disable_session_token" :false,
+	})
+)
+-- want.txt --
+[
+	{
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {
+			"Authorization": [
+				"AWS4-HMAC-SHA256 Credential=id/20091110/region/service/aws4_request, SignedHeaders=host;x-amz-date, Signature=179a97631edffa7a80940bfd8b7344160f19b18eed214dc2f8b64bb2cbfff087"
+			],
+			"X-Amz-Date": [
+				"20091110T230000Z"
+			]
+		},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	{
+		"Body": "cmVxdWVzdCBkYXRh",
+		"Close": false,
+		"ContentLength": 12,
+		"Header": {
+			"Authorization": [
+				"AWS4-HMAC-SHA256 Credential=id/20091110/region/service/aws4_request, SignedHeaders=content-length;host;x-amz-date, Signature=9e1d2cee52f19d299edebe52a2e0100273bbb58dedd34cb99a9849f0a712812a"
+			],
+			"X-Amz-Date": [
+				"20091110T230000Z"
+			]
+		},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	{
+		"Close": false,
+		"ContentLength": 0,
+		"Header": {
+			"Authorization": [
+				"AWS4-HMAC-SHA256 Credential=id/20091110/region/service/aws4_request, SignedHeaders=host;x-amz-date, Signature=179a97631edffa7a80940bfd8b7344160f19b18eed214dc2f8b64bb2cbfff087"
+			],
+			"X-Amz-Date": [
+				"20091110T230000Z"
+			]
+		},
+		"Host": "www.example.com",
+		"Method": "GET",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	},
+	{
+		"Body": "cmVxdWVzdCBkYXRh",
+		"Close": false,
+		"ContentLength": 12,
+		"Header": {
+			"Authorization": [
+				"AWS4-HMAC-SHA256 Credential=id/20091110/region/service/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=06cc82f636b72e2d5d260686cd15bf2ce6e7ef1457466b51843940e8f8f2fa7d"
+			],
+			"Content-Type": [
+				"text/plain"
+			],
+			"X-Amz-Date": [
+				"20091110T230000Z"
+			]
+		},
+		"Host": "www.example.com",
+		"Method": "POST",
+		"Proto": "HTTP/1.1",
+		"ProtoMajor": 1,
+		"ProtoMinor": 1,
+		"URL": "http://www.example.com/"
+	}
+]
