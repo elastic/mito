@@ -40,7 +40,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/interpreter"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
@@ -401,7 +402,7 @@ func eval(src, root string, input interface{}, fold, details, coverage bool, lib
 
 func compile(src, root string, fold, details, coverage bool, libs ...cel.EnvOption) (cel.Program, *cel.Ast, *lib.Coverage, error) {
 	opts := append([]cel.EnvOption{
-		cel.Declarations(decls.NewVar(root, decls.Dyn)),
+		cel.VariableDecls(decls.NewVariable(root, types.DynType)),
 	}, libs...)
 	env, err := cel.NewEnv(opts...)
 	if err != nil {
