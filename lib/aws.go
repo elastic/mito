@@ -63,7 +63,7 @@ import (
 // have all the field listed above and no others, or the call will fail.
 //
 // This corresponds to using [v4_creds.Signer.SignHTTP] using the result of a call
-// to [credentials.NewEnvCredentials].
+// to [config.NewEnvConfig].
 //
 // # Sign AWS from shared credentials
 //
@@ -82,10 +82,11 @@ import (
 //
 //	req.sign_aws_from_shared("", "", {"service": "service", … })   // return {"Body": "…
 //
-// The last six parameters are as described for sign_aws_from_env.
+// The last parameter is as described for the object parameter for sign_aws_from_env.
 //
 // This corresponds to using [v4_creds.Signer.SignHTTP] using the result of a call
-// to [credentials.NewSharedCredentials].
+// to [config.LoadDefaultConfig] using the [config.WithSharedCredentialsFiles]
+// and [config.WithSharedConfigProfile] options.
 //
 // # Sign AWS from static credentials
 //
@@ -99,11 +100,12 @@ import (
 //	req.sign_aws_from_static("id", "secret", "token", {"service": "service", … })   // return {"Body": "…
 //	req.sign_aws_from_static("id", "secret", "token", "source", {"service": "service", … })   // return {"Body": "…
 //
-// The last six parameters are as described for sign_aws_from_env.
+// The last parameters is as described for the object parameter for sign_aws_from_env.
 //
-// This corresponds to using [v4_creds.Signer.SignHTTP] using the result of a call
-// to [credentials.NewStaticCredentials] (nine parameter case) or
-// [credentials.NewStaticCredentialsFromCreds] (ten parameter case).
+// This corresponds to using [v4_creds.Signer.SignHTTP] using the an explicitly
+// filled [aws.Credentials] struct, with the AccessKeyID, SecretAccessKey and
+// SessionToken fields set in the four parameter case, and also setting Source
+// in the five parameter case.
 //
 // [AWS environment variables]: https://docs.aws.amazon.com/sdkref/latest/guide/settings-reference.html#EVarSettings
 func AWS() cel.EnvOption {
