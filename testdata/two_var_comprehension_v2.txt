@@ -1,0 +1,68 @@
+mito src.cel
+cmp stdout want.txt
+
+-- src.cel --
+// Examples derived from the CEL two variable comprehension docs with changes
+// required to conform to JSON-serialised testing here.
+[
+	[1, 2, 3].transformList(i, v, (i * v) + v),
+	[1, 2, 3].transformList(i, v, i % 2 == 0, (i * v) + v),
+	// Map iteration order is non-deterministic, so do explicit checks for the
+	// following two tests.
+	{'greeting': 'hello', 'farewell': 'goodbye'}.transformList(k, _, k).as(res,
+		res.size() == 2 &&
+		res.exists(e, e == 'greeting') &&
+		res.exists(e, e == 'farewell')
+	),
+	{'greeting': 'hello', 'farewell': 'goodbye'}.transformList(_, v, v).as(res,
+		res.size() == 2 &&
+		res.exists(e, e == 'hello') &&
+		res.exists(e, e == 'goodbye')
+	),
+
+	// The first two examples here deviate from the CEL documentation since
+	// we depend on serialisation to JSON which cannot have integer keys,
+	// so we have a second transformMapEntry to stringify the key.
+	[1, 2, 3].transformMap(i, v, (i * v) + v).transformMapEntry(k, v, {string(k): v}),
+	[1, 2, 3].transformMap(i, v, i % 2 == 0, (i * v) + v).transformMapEntry(k, v, {string(k): v}),
+	{'greeting': 'hello'}.transformMap(k, v, v + '!'),
+
+	{'greeting': 'hello'}.transformMapEntry(k, v, {v: k}),
+	[1, 2, 3].transformMapEntry(i, v, {string(v): i}),
+	try({'greeting': 'aloha', 'farewell': 'aloha'}.transformMapEntry(k, v, {v: k})),
+]
+-- want.txt --
+[
+	[
+		1,
+		4,
+		9
+	],
+	[
+		1,
+		9
+	],
+	true,
+	true,
+	{
+		"0": 1,
+		"1": 4,
+		"2": 9
+	},
+	{
+		"0": 1,
+		"2": 9
+	},
+	{
+		"greeting": "hello!"
+	},
+	{
+		"hello": "greeting"
+	},
+	{
+		"1": 0,
+		"2": 1,
+		"3": 2
+	},
+	"insert failed: key aloha already exists"
+]
