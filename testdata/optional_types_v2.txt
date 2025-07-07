@@ -1,0 +1,9 @@
+mito src.cel
+cmp stdout want.txt
+
+-- src.cel --
+optional.unwrap([optional.of(42), optional.none()])
+-- want.txt --
+[
+	42
+]

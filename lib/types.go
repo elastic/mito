@@ -28,9 +28,15 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-// OptionalTypesVersion is the version of the optional types library
-// used by mito.
-const OptionalTypesVersion = 1
+const (
+	// OptionalTypesVersion is the version of the optional types library
+	// used by mito.
+	OptionalTypesVersion = 2
+
+	// TwoVarComprehensionVersion is the version of the two variable
+	// comprehension library used by mito.
+	TwoVarComprehensionVersion = 2
+)
 
 // Types used in overloads.
 var (
