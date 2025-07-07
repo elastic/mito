@@ -1,0 +1,54 @@
+mito -use json,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	"{\"a\":111111111111111111111111111,\"b\":[1,2,3]}".decode_json_string_numbers(),
+	b"{\"a\":111111111111111111111111111,\"b\":[1,2,3]}".decode_json_string_numbers(),
+	decode_json_string_numbers("{\"a\":111111111111111111111111111,\"b\":[1,2,3]}"),
+	decode_json_string_numbers(b"{\"a\":111111111111111111111111111,\"b\":[1,2,3]}"),
+	try("".decode_json_string_numbers()),
+	"[] ".decode_json_string_numbers(),
+	try("[],".decode_json_string_numbers()),
+	try("[][]".decode_json_string_numbers()),
+]
+-- want.txt --
+[
+	{
+		"a": "111111111111111111111111111",
+		"b": [
+			"1",
+			"2",
+			"3"
+		]
+	},
+	{
+		"a": "111111111111111111111111111",
+		"b": [
+			"1",
+			"2",
+			"3"
+		]
+	},
+	{
+		"a": "111111111111111111111111111",
+		"b": [
+			"1",
+			"2",
+			"3"
+		]
+	},
+	{
+		"a": "111111111111111111111111111",
+		"b": [
+			"1",
+			"2",
+			"3"
+		]
+	},
+	"failed to unmarshal JSON message: unexpected end of JSON input",
+	[],
+	"failed to unmarshal JSON message: invalid character ',' after top-level value",
+	"failed to unmarshal JSON message: invalid character '[' after top-level value"
+]

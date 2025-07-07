@@ -20,6 +20,7 @@ package lib
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -62,6 +63,20 @@ import (
 //	"{\"a\":1,\"b\":[1,2,3]}".decode_json()   // return {"a":1, "b":[1, 2, 3]}
 //	b"{\"a\":1,\"b\":[1,2,3]}".decode_json()  // return {"a":1, "b":[1, 2, 3]}
 //
+// decode_json_string_numbers returns the object described by the JSON encoding
+// of the receiver or parameter except that numbers will be represented as the
+// literal string syntax used to represent them:
+//
+//	<bytes>.decode_json_string_numbers() -> <dyn>
+//	<string>.decode_json_string_numbers() -> <dyn>
+//	decode_json_string_numbers(<bytes>) -> <dyn>
+//	decode_json_string_numbers(<string>) -> <dyn>
+//
+// Examples:
+//
+//	"{\"a\":1,\"b\":[1,2,3]}".decode_json_string_numbers()   // return {"a":"1", "b":["1", "2", "3"]}
+//	b"{\"a\":1,\"b\":[1,2,3]}".decode_json_string_numbers()  // return {"a":"1", "b":["1", "2", "3"]}
+//
 // # Decode JSON Stream
 //
 // decode_json_stream returns a list of objects described by the JSON stream
@@ -76,6 +91,20 @@ import (
 //
 //	'{"a":1}{"b":2}'.decode_json_stream()   // return [{"a":1}, {"b":2}]
 //	b'{"a":1}{"b":2}'.decode_json_stream()  // return [{"a":1}, {"b":2}]
+//
+// decode_json_stream_string_numbers returns a list of objects described by the
+// JSON stream of the receiver or parameter except that numbers will be
+// represented as the literal string syntax used to represent them:
+//
+//	<bytes>.decode_json_stream_string_numbers() -> <list<dyn>>
+//	<string>.decode_json_stream_string_numbers() -> <list<dyn>>
+//	decode_json_stream_string_numbers(<bytes>) -> <list<dyn>>
+//	decode_json_stream_string_numbers(<string>) -> <list<dyn>>
+//
+// Examples:
+//
+//	'{"a":1}{"b":2}'.decode_json_stream_string_numbers()   // return [{"a":"1"}, {"b":"2"}]
+//	b'{"a":1}{"b":2}'.decode_json_stream_string_numbers()  // return [{"a":"1"}, {"b":"2"}]
 func JSON(adapter types.Adapter) cel.EnvOption {
 	if adapter == nil {
 		adapter = types.DefaultTypeAdapter
@@ -131,6 +160,33 @@ func (l jsonLib) CompileOptions() []cel.EnvOption {
 			),
 		),
 
+		cel.Function("decode_json_string_numbers",
+			cel.MemberOverload(
+				"string_decode_json_string_numbers",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONUseNumber)),
+			),
+			cel.Overload(
+				"decode_json_string_numbers_string",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONUseNumber)),
+			),
+			cel.MemberOverload(
+				"bytes_decode_json_string_numbers",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONUseNumber)),
+			),
+			cel.Overload(
+				"decode_json_string_numbers_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONUseNumber)),
+			),
+		),
+
 		cel.Function("decode_json_stream",
 			cel.MemberOverload(
 				"string_decode_json_stream",
@@ -155,6 +211,33 @@ func (l jsonLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.BytesType},
 				cel.DynType,
 				cel.UnaryBinding(catch(l.decodeJSONStream)),
+			),
+		),
+
+		cel.Function("decode_json_stream_string_numbers",
+			cel.MemberOverload(
+				"string_decode_json_stream_string_numbers",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamUseNumber)),
+			),
+			cel.Overload(
+				"decode_json_stream_string_numbers_string",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamUseNumber)),
+			),
+			cel.MemberOverload(
+				"bytes_decode_json_stream_string_numbers",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamUseNumber)),
+			),
+			cel.Overload(
+				"decode_json_stream_string_numbers_bytes",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamUseNumber)),
 			),
 		),
 	}
@@ -223,6 +306,42 @@ func (l jsonLib) decodeJSON(val ref.Val) ref.Val {
 	return l.adapter.NativeToValue(v)
 }
 
+func (l jsonLib) decodeJSONUseNumber(val ref.Val) ref.Val {
+	var r io.Reader
+	switch msg := val.(type) {
+	case types.Bytes:
+		r = bytes.NewReader(msg)
+	case types.String:
+		r = bytes.NewReader([]byte(msg))
+	default:
+		return types.NoSuchOverloadErr()
+	}
+	dec := json.NewDecoder(r)
+	dec.UseNumber()
+	var v any
+	err := dec.Decode(&v)
+	if err != nil {
+		if err == io.EOF {
+			err = errors.New("unexpected end of JSON input")
+		}
+		return types.NewErr("failed to unmarshal JSON message: %v", err)
+	}
+	tok, err := dec.Token()
+	switch err {
+	case nil:
+		return types.NewErr("failed to unmarshal JSON message: invalid character '%s' after top-level value", tok)
+	case io.EOF:
+	default:
+		var buf bytes.Buffer
+		io.Copy(&buf, dec.Buffered())
+		b := bytes.TrimSpace(buf.Bytes())
+		if len(b) != 0 {
+			return types.NewErr("failed to unmarshal JSON message: invalid character '%c' after top-level value", b[0])
+		}
+	}
+	return l.adapter.NativeToValue(v)
+}
+
 func (l jsonLib) decodeJSONStream(val ref.Val) ref.Val {
 	var r io.Reader
 	switch msg := val.(type) {
@@ -235,6 +354,30 @@ func (l jsonLib) decodeJSONStream(val ref.Val) ref.Val {
 	}
 	var s []interface{}
 	dec := json.NewDecoder(r)
+	for dec.More() {
+		var v interface{}
+		err := dec.Decode(&v)
+		if err != nil {
+			return types.NewErr("failed to unmarshal JSON stream: %v", err)
+		}
+		s = append(s, v)
+	}
+	return l.adapter.NativeToValue(s)
+}
+
+func (l jsonLib) decodeJSONStreamUseNumber(val ref.Val) ref.Val {
+	var r io.Reader
+	switch msg := val.(type) {
+	case types.Bytes:
+		r = bytes.NewReader(msg)
+	case types.String:
+		r = bytes.NewReader([]byte(msg))
+	default:
+		return types.NoSuchOverloadErr()
+	}
+	var s []interface{}
+	dec := json.NewDecoder(r)
+	dec.UseNumber()
 	for dec.More() {
 		var v interface{}
 		err := dec.Decode(&v)

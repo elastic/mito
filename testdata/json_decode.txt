@@ -1,4 +1,4 @@
-mito -use json src.cel
+mito -use json,try src.cel
 ! stderr .
 cmp stdout want.txt
 
@@ -8,6 +8,10 @@ cmp stdout want.txt
 	b"{\"a\":1,\"b\":[1,2,3]}".decode_json(),
 	decode_json("{\"a\":1,\"b\":[1,2,3]}"),
 	decode_json(b"{\"a\":1,\"b\":[1,2,3]}"),
+	try("".decode_json()),
+	"[] ".decode_json(),
+	try("[],".decode_json()),
+	try("[][]".decode_json()),
 ]
 -- want.txt --
 [
@@ -42,5 +46,9 @@ cmp stdout want.txt
 			2,
 			3
 		]
-	}
+	},
+	"failed to unmarshal JSON message: unexpected end of JSON input",
+	[],
+	"failed to unmarshal JSON message: invalid character ',' after top-level value",
+	"failed to unmarshal JSON message: invalid character '[' after top-level value"
 ]
