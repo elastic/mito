@@ -20,6 +20,7 @@ package lib
 import (
 	"bytes"
 	"fmt"
+	"net/textproto"
 	"strings"
 	"unicode/utf8"
 
@@ -40,6 +41,7 @@ import (
 //
 // # String Methods
 //
+//   - canonical_mime_header: textproto.CanonicalMIMEHeaderKey(s string) string
 //   - compare: strings.Compare(a, b string) int
 //   - contains_substr: strings.Contains(s, substr string) bool
 //   - contains_any: strings.ContainsAny(s, chars string) bool
@@ -114,6 +116,14 @@ type stringLib struct{}
 
 func (l stringLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
+		cel.Function("canonical_mime_header_key",
+			cel.MemberOverload(
+				"string_canonical_mime_header_key_string",
+				[]*cel.Type{cel.StringType},
+				cel.StringType,
+				cel.UnaryBinding(l.canonicalMIMEHeaderKey),
+			),
+		),
 		cel.Function("compare",
 			cel.MemberOverload(
 				"string_compare_string_int",
@@ -452,6 +462,14 @@ func (l stringLib) CompileOptions() []cel.EnvOption {
 }
 
 func (stringLib) ProgramOptions() []cel.ProgramOption { return nil }
+
+func (l stringLib) canonicalMIMEHeaderKey(arg ref.Val) ref.Val {
+	s, ok := arg.(types.String)
+	if !ok {
+		return types.ValOrErr(s, "no such overload for canonical_mime_header")
+	}
+	return types.DefaultTypeAdapter.NativeToValue(textproto.CanonicalMIMEHeaderKey(string(s)))
+}
 
 func (l stringLib) compare(arg0, arg1 ref.Val) ref.Val {
 	a, ok := arg0.(types.String)
