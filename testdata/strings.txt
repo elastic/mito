@@ -7,6 +7,13 @@ regexp:
   "dummy": "."
 -- src.cel --
 {
+	"func CanonicalMIMEHeaderKey(s string) string":[
+		"X-Ratelimit-Limit".canonical_mime_header_key(),
+		"X-RateLimit-Limit".canonical_mime_header_key(),
+		"X-rateLimit-Limit".canonical_mime_header_key(),
+		"X-rateLimit-limit".canonical_mime_header_key(),
+		"x-ratelimit-limit".canonical_mime_header_key(),
+	],
 	"func Compare(a, b string) int":[
 		"a".compare("b"),
 		"a".compare("a"),
@@ -141,6 +148,13 @@ regexp:
 }
 -- want.txt --
 {
+	"func CanonicalMIMEHeaderKey(s string) string": [
+		"X-Ratelimit-Limit",
+		"X-Ratelimit-Limit",
+		"X-Ratelimit-Limit",
+		"X-Ratelimit-Limit",
+		"X-Ratelimit-Limit"
+	],
 	"func Compare(a, b string) int": [
 		-1,
 		0,
