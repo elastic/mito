@@ -535,9 +535,9 @@ func oAuth2Client(cfg OAuth2) (*http.Client, error) {
 
 		fallthrough
 	case "azure":
-		var token string
+		token := cfg.TokenURL
 		if prov == "azure" {
-			if cfg.TokenURL == "" {
+			if token == "" {
 				token = endpoints.AzureAD(cfg.AzureTenantID).TokenURL
 			}
 			if cfg.AzureResource != "" {
