@@ -42,11 +42,9 @@ import (
 // will be used for the requests and API rate limiting. If client is nil
 // the http.DefaultClient will be used and if limit is nil an non-limiting
 // rate.Limiter will be used. If auth is not nil, the Authorization header
-// is populated for Basic Authentication or token authentication in requests
-// constructed for direct HEAD, GET and POST method calls. Explicitly constructed
-// requests used in do_request are not affected by auth. In cases where Basic
-// Authentication is needed for these constructed requests, the
-// basic_authentication method can be used to add the necessary header.
+// is populated for basic authentication or token authentication. Explicitly
+// constructed requests can also add basic authentication in CEL, using the
+// basic_authentication method.
 //
 // # HEAD
 //
@@ -845,6 +843,12 @@ func (l httpLib) doRequest(arg ref.Val) ref.Val {
 	err = l.options.Limiter.Wait(l.ctx)
 	if err != nil {
 		return types.NewErr("%s", err)
+	}
+	if l.options.BasicAuth != nil {
+		req.SetBasicAuth(l.options.BasicAuth.Username, l.options.BasicAuth.Password)
+	}
+	if l.options.TokenAuth != nil {
+		l.options.TokenAuth.AddTo(req.Header)
 	}
 	addHeaders(req, l.options.Headers)
 	resp, err := l.client.Do(req)
