@@ -43,8 +43,8 @@ import (
 // the http.DefaultClient will be used and if limit is nil an non-limiting
 // rate.Limiter will be used. If auth is not nil, the Authorization header
 // is populated for basic authentication or token authentication. Explicitly
-// constructed requests can also add basic authentication in CEL, using the
-// basic_authentication method.
+// constructed requests can alternatively add basic authentication in CEL,
+// using the basic_authentication method.
 //
 // # HEAD
 //
