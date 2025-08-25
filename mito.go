@@ -211,10 +211,19 @@ func Main() int {
 			fmt.Fprintln(os.Stderr, err)
 			return 2
 		}
-		input = map[string]interface{}{root: input}
+		if *maxExecutions > 0 {
+			// Only provide remaining_executions if we have set a limit.
+			input = map[string]interface{}{
+				root:                   input,
+				"remaining_executions": *maxExecutions - 1,
+			}
+		} else {
+			input = map[string]interface{}{root: input}
+		}
 	}
 
 	var cov lib.Coverage
+	budget := *maxExecutions - 1
 	for n := int(0); *maxExecutions < 0 || n < *maxExecutions; n++ {
 		res, val, dump, c, err := eval(string(b), root, input, *fold, *dumpState != "", *coverage != "", libs...)
 		if err := cov.Merge(c); err != nil {
@@ -242,7 +251,17 @@ func Main() int {
 		if more, _ := state["want_more"].(bool); !more {
 			break
 		}
-		input = map[string]any{"state": val}
+		if budget > 0 {
+			budget--
+			input = map[string]any{
+				"state":                val,
+				"remaining_executions": budget,
+			}
+		} else {
+			input = map[string]any{
+				"state": val,
+			}
+		}
 	}
 	if *coverage != "" {
 		f, err := os.Create(*coverage)
@@ -404,7 +423,10 @@ func eval(src, root string, input interface{}, fold, details, coverage bool, lib
 
 func compile(src, root string, fold, details, coverage bool, libs ...cel.EnvOption) (cel.Program, *cel.Ast, *lib.Coverage, error) {
 	opts := append([]cel.EnvOption{
-		cel.VariableDecls(decls.NewVariable(root, types.DynType)),
+		cel.VariableDecls(
+			decls.NewVariable(root, types.DynType),
+			decls.NewVariable("remaining_executions", types.IntType),
+		),
 	}, libs...)
 	env, err := cel.NewEnv(opts...)
 	if err != nil {
