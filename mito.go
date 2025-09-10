@@ -37,6 +37,7 @@ import (
 	"regexp"
 	runtimedebug "runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/cel-go/cel"
@@ -48,6 +49,7 @@ import (
 	"golang.org/x/oauth2/clientcredentials"
 	"golang.org/x/oauth2/endpoints"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -92,6 +94,8 @@ func Main() int {
 		cel.OptionalTypes(cel.OptionalTypesVersion(lib.OptionalTypesVersion)),
 		ext.TwoVarComprehensions(ext.TwoVarComprehensionsVersion(lib.OptionalTypesVersion)),
 	}
+	ctx := context.Background()
+	limit := rate.NewLimiter(1, 1)
 	if *cfgPath != "" {
 		f, err := os.Open(*cfgPath)
 		if err != nil {
@@ -140,6 +144,7 @@ func Main() int {
 		}
 		var client *http.Client
 		httpOptions := lib.HTTPOptions{
+			Limiter:     limit,
 			Headers:     cfg.HTTPHeaders,
 			MaxBodySize: cfg.MaxBodySize,
 		}
@@ -161,7 +166,6 @@ func Main() int {
 			}
 		}
 		if client != nil || !httpOptions.IsZero() {
-			ctx := context.Background()
 			libMap["http"] = lib.HTTPWithContextOpts(ctx, traceReqs(setClientInsecure(client, *insecure), *logTrace, *maxTraceBody), httpOptions)
 		}
 		if *maxExecutions == -1 && cfg.MaxExecutions != nil {
@@ -170,8 +174,12 @@ func Main() int {
 
 	}
 	if libMap["http"] == nil {
-		libMap["http"] = lib.HTTP(traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), nil, nil)
+		libMap["http"] = lib.HTTPWithContextOpts(ctx, traceReqs(setClientInsecure(nil, *insecure), *logTrace, *maxTraceBody), lib.HTTPOptions{Limiter: limit})
 	}
+	libMap["limit"] = lib.LimitWithApply(limitPolicies, func(m map[string]any, h http.Header) map[string]any {
+		handleRateLimit(m, h, limit)
+		return m
+	})
 	if libMap["xml"] == nil {
 		var err error
 		libMap["xml"], err = lib.XML(nil, nil)
@@ -261,6 +269,95 @@ func Main() int {
 		}
 	}
 	return 0
+}
+
+func handleRateLimit(rateLimit map[string]interface{}, header http.Header, limiter *rate.Limiter) (waitUntil time.Time) {
+	if _, ok := rateLimit["error"]; ok {
+		// The error field should be a string, but we won't quibble here.
+		return waitUntil
+	}
+
+	limit, ok := getLimit("rate", rateLimit)
+	if !ok {
+		return waitUntil
+	}
+
+	var burst int
+	b := rateLimit["burst"]
+	switch b := b.(type) {
+	case int:
+		burst = b
+	case int64:
+		burst = int(b)
+	case float64:
+		burst = int(b)
+	default:
+	}
+	if burst < 1 {
+		// Make sure we can make at least one new request, even if we fail
+		// to get a non-zero rate.Limit. We could set to zero for the case
+		// that limit=rate.Inf, but that detail is not important.
+		burst = 1
+	}
+
+	// Process reset if we need to wait until reset to avoid a request against a zero quota.
+	if limit <= 0 {
+		w, ok := rateLimit["reset"]
+		if ok {
+			switch w := w.(type) {
+			case time.Time:
+				waitUntil = w
+				next, ok := getLimit("next", rateLimit)
+				if !ok {
+					return waitUntil
+				}
+				limiter.SetLimitAt(waitUntil, next)
+				limiter.SetBurstAt(waitUntil, burst)
+			case string:
+				t, err := time.Parse(time.RFC3339, w)
+				if err != nil {
+					return waitUntil
+				}
+				waitUntil = t
+				next, ok := getLimit("next", rateLimit)
+				if !ok {
+					return waitUntil
+				}
+				limiter.SetLimitAt(waitUntil, next)
+				limiter.SetBurstAt(waitUntil, burst)
+			default:
+			}
+		}
+		return waitUntil
+	}
+
+	limiter.SetLimit(limit)
+	limiter.SetBurst(burst)
+	return waitUntil
+}
+
+func getLimit(which string, rateLimit map[string]interface{}) (limit rate.Limit, ok bool) {
+	r, ok := rateLimit[which]
+	if !ok {
+		return limit, false
+	}
+	switch r := r.(type) {
+	case rate.Limit:
+		limit = r
+	case int:
+		limit = rate.Limit(r)
+	case int64:
+		limit = rate.Limit(r)
+	case float64:
+		limit = rate.Limit(r)
+	case string:
+		if !strings.EqualFold(strings.TrimPrefix(r, "+"), "inf") && !strings.EqualFold(strings.TrimPrefix(r, "+"), "infinity") {
+			return limit, false
+		}
+		limit = rate.Inf
+	default:
+	}
+	return limit, true
 }
 
 func authsCount(auth *rc.AuthConfig) int {
@@ -359,7 +456,7 @@ var (
 		"file":        lib.File(mimetypes),
 		"mime":        lib.MIME(mimetypes),
 		"http":        nil, // This will be populated by Main.
-		"limit":       lib.Limit(limitPolicies),
+		"limit":       nil, // This will be populated by Main.
 		"strings":     lib.Strings(),
 		"printf":      lib.Printf(),
 		"xml":         nil, // This will be populated by Main.
