@@ -81,13 +81,21 @@ import (
 //	// Non-canonical keys.
 //	rate_limit(h, 'X-RateLimit', false, false, duration('1s'), 1)
 func Limit(policy map[string]LimitPolicy) cel.EnvOption {
-	return cel.Lib(limitLib{policies: policy})
+	return LimitWithApply(policy, nil)
+}
+
+func LimitWithApply(policy map[string]LimitPolicy, apply func(map[string]any, http.Header) map[string]any) cel.EnvOption {
+	if apply == nil {
+		apply = func(m map[string]any, _ http.Header) map[string]any { return m }
+	}
+	return cel.Lib(limitLib{policies: policy, apply: apply})
 }
 
 type LimitPolicy func(header http.Header, window time.Duration) map[string]interface{}
 
 type limitLib struct {
 	policies map[string]LimitPolicy
+	apply    func(map[string]any, http.Header) map[string]any
 }
 
 func (l limitLib) CompileOptions() []cel.EnvOption {
@@ -103,7 +111,7 @@ func (l limitLib) CompileOptions() []cel.EnvOption {
 				"map_dyn_rate_limit_string_bool_bool_duration_int",
 				[]*cel.Type{mapStringDyn, cel.StringType, cel.BoolType, cel.BoolType, cel.DurationType, cel.IntType},
 				mapStringDyn,
-				cel.FunctionBinding(catch(translatePolicy)),
+				cel.FunctionBinding(catch(l.translateLimits)),
 			),
 		),
 	}
@@ -138,7 +146,7 @@ func (l limitLib) translatePolicy(args ...ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	return types.DefaultTypeAdapter.NativeToValue(translate(h, window.Duration))
+	return types.DefaultTypeAdapter.NativeToValue(l.apply(translate(h, window.Duration), h))
 }
 
 func mapStrings(val ref.Val) (map[string][]string, error) {
@@ -394,7 +402,7 @@ func (p policy) details(q int) (window, burst int, err error) {
 	return window, burst, nil
 }
 
-func translatePolicy(args ...ref.Val) ref.Val {
+func (l limitLib) translateLimits(args ...ref.Val) ref.Val {
 	if len(args) != 6 {
 		return types.NewErr("no such overload")
 	}
@@ -426,7 +434,7 @@ func translatePolicy(args ...ref.Val) ref.Val {
 	if !ok {
 		return types.ValOrErr(burst, "no such overload for burst: %s", args[4].Type())
 	}
-	p := limitPolicy(h, string(prefix), bool(canonical), bool(delta), window.Duration, int(burst))
+	p := l.apply(limitPolicy(h, string(prefix), bool(canonical), bool(delta), window.Duration, int(burst)), h)
 	return types.DefaultTypeAdapter.NativeToValue(p)
 }
 
