@@ -251,7 +251,7 @@ func encodeJSON(val ref.Val) ref.Val {
 	switch under := val.Value().(type) {
 	case map[string]any:
 		v = under
-	case map[ref.Val]ref.Val:
+	case map[ref.Val]ref.Val, []ref.Val:
 		pb, err := val.ConvertToNative(structpbValueType)
 		if err != nil {
 			return types.NewErr("failed proto conversion: %v", err)
