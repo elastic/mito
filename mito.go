@@ -211,12 +211,12 @@ func Main() int {
 	if *data != "" {
 		b, err := os.ReadFile(*data)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintf(os.Stderr, "failed reading JSON data from %q: %s", *data, err)
 			return 2
 		}
 		err = json.Unmarshal(b, &input)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintf(os.Stderr, "failed parsing JSON data from %q: %s", *data, err)
 			return 2
 		}
 		if *maxExecutions > 0 {
