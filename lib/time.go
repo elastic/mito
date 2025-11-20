@@ -91,6 +91,20 @@ import (
 //	duration("42s").round(duration("10s"))  // return "40s"
 //	now.round(duration("1h"))               // return "2022-03-30T11:00:00Z"
 //
+// # Truncate
+//
+// Truncate returns the timestamp or duration truncated down to the nearest multiple of the
+// duration parameter using [time.Time.Truncate] for timestamps and [time.Duration.Truncate]
+// for durations:
+//
+//	<timestamp>.truncate(<duration>) -> <timestamp>
+//	<duration>.truncate(<duration>) -> <duration>
+//
+// Examples:
+//
+//	duration("42s").truncate(duration("10s"))  // return "40s"
+//	now.truncate(duration("1h"))               // return "2022-03-30T11:00:00Z"
+//
 // # Global Variables
 //
 // A collection of global variable are provided to give access to the start
@@ -174,6 +188,20 @@ func (timeLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.TimestampType, cel.DurationType},
 				cel.TimestampType,
 				cel.BinaryBinding(roundTimestamp),
+			),
+		),
+		cel.Function("truncate",
+			cel.MemberOverload(
+				"duration_truncate_duration_duration",
+				[]*cel.Type{cel.DurationType, cel.DurationType},
+				cel.DurationType,
+				cel.BinaryBinding(truncateDuration),
+			),
+			cel.MemberOverload(
+				"time_truncate_duration_time",
+				[]*cel.Type{cel.TimestampType, cel.DurationType},
+				cel.TimestampType,
+				cel.BinaryBinding(truncateTimestamp),
 			),
 		),
 	}
@@ -288,4 +316,28 @@ func roundTimestamp(arg, layout ref.Val) ref.Val {
 		return types.ValOrErr(res, "no such overload for timestamp round: %s", layout.Type())
 	}
 	return types.Timestamp{Time: t.Time.Round(res.Duration)}
+}
+
+func truncateDuration(arg, layout ref.Val) ref.Val {
+	d, ok := arg.(types.Duration)
+	if !ok {
+		return types.ValOrErr(d, "no such overload for duration truncate: %s", arg.Type())
+	}
+	res, ok := layout.(types.Duration)
+	if !ok {
+		return types.ValOrErr(res, "no such overload for duration truncate: %s", layout.Type())
+	}
+	return types.Duration{Duration: d.Duration.Truncate(res.Duration)}
+}
+
+func truncateTimestamp(arg, layout ref.Val) ref.Val {
+	t, ok := arg.(types.Timestamp)
+	if !ok {
+		return types.ValOrErr(t, "no such overload for timestamp truncate: %s", arg.Type())
+	}
+	res, ok := layout.(types.Duration)
+	if !ok {
+		return types.ValOrErr(res, "no such overload for timestamp truncate: %s", layout.Type())
+	}
+	return types.Timestamp{Time: t.Time.Truncate(res.Duration)}
 }
