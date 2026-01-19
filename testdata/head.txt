@@ -3,29 +3,21 @@ mito -use http,collections src.cel
 cmp stdout want.txt
 
 -- src.cel --
-head("http://www.example.com/").drop([
+head("http://www.example.com/").as(resp, 
+	resp.with({
+		"Body": resp.Body == b"" ? resp.Body : b"some text",
+		"Header": {?"Content-Type": resp.?Header["Content-Type"]},
+	})
+).drop([
 	"ContentLength",
-	"Header.Accept-Ranges",
-	"Header.Age",
-	"Header.Content-Encoding",
-	"Header.Content-Length",
-	"Header.Date",
-	"Header.Etag",
-	"Header.Cache-Control",
-	"Header.Last-Modified",
-	"Header.Vary",
-	"Header.X-Cache",
-	"Header.Expires",
-	"Header.Server",
+	"TransferEncoding",
+	"Uncompressed",
 ])
 -- want.txt --
 {
 	"Body": "",
 	"Close": false,
 	"Header": {
-		"Connection": [
-			"keep-alive"
-		],
 		"Content-Type": [
 			"text/html"
 		]
@@ -45,6 +37,5 @@ head("http://www.example.com/").drop([
 		"URL": "http://www.example.com/"
 	},
 	"Status": "200 OK",
-	"StatusCode": 200,
-	"Uncompressed": false
+	"StatusCode": 200
 }
