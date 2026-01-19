@@ -489,7 +489,6 @@ func limitPolicy(h http.Header, prefix string, canonical, delta bool, window tim
 		m["error"] = fmt.Sprintf("could not parse %q as number or timestamp", reset)
 		return m
 	}
-	per *= window.Seconds()
 
 	m["next"] = rate.Limit(lim / window.Seconds())
 	m["rate"] = rate.Limit(rem / per)
