@@ -3,31 +3,23 @@ stderr 'transaction\.id'
 cmp stdout want.txt
 
 -- src.cel --
-get("http://www.example.com/").drop([
-	"Header.Accept-Ranges",
-	"Header.Age",
-	"Header.Date",
-	"Header.Etag",
-	"Header.Cache-Control",
-	"Header.Last-Modified",
-	"Header.X-Cache",
-	"Header.Expires",
-	"Header.Server",
+get("http://www.example.com/").as(resp, 
+	resp.with({
+		"Body": resp.Body == b"" ? resp.Body : b"some text",
+		"Header": {?"Content-Type": resp.?Header["Content-Type"]},
+	})
+).drop([
+	"ContentLength",
+	"TransferEncoding",
+	"Uncompressed",
 ])
 -- want.txt --
 {
-	"Body": "PCFkb2N0eXBlIGh0bWw+PGh0bWwgbGFuZz0iZW4iPjxoZWFkPjx0aXRsZT5FeGFtcGxlIERvbWFpbjwvdGl0bGU+PG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xIj48c3R5bGU+Ym9keXtiYWNrZ3JvdW5kOiNlZWU7d2lkdGg6NjB2dzttYXJnaW46MTV2aCBhdXRvO2ZvbnQtZmFtaWx5OnN5c3RlbS11aSxzYW5zLXNlcmlmfWgxe2ZvbnQtc2l6ZToxLjVlbX1kaXZ7b3BhY2l0eTowLjh9YTpsaW5rLGE6dmlzaXRlZHtjb2xvcjojMzQ4fTwvc3R5bGU+PGJvZHk+PGRpdj48aDE+RXhhbXBsZSBEb21haW48L2gxPjxwPlRoaXMgZG9tYWluIGlzIGZvciB1c2UgaW4gZG9jdW1lbnRhdGlvbiBleGFtcGxlcyB3aXRob3V0IG5lZWRpbmcgcGVybWlzc2lvbi4gQXZvaWQgdXNlIGluIG9wZXJhdGlvbnMuPHA+PGEgaHJlZj0iaHR0cHM6Ly9pYW5hLm9yZy9kb21haW5zL2V4YW1wbGUiPkxlYXJuIG1vcmU8L2E+PC9kaXY+PC9ib2R5PjwvaHRtbD4K",
+	"Body": "c29tZSB0ZXh0",
 	"Close": false,
-	"ContentLength": -1,
 	"Header": {
-		"Connection": [
-			"keep-alive"
-		],
 		"Content-Type": [
 			"text/html"
-		],
-		"Vary": [
-			"Accept-Encoding"
 		]
 	},
 	"Proto": "HTTP/1.1",
@@ -45,6 +37,5 @@ get("http://www.example.com/").drop([
 		"URL": "http://www.example.com/"
 	},
 	"Status": "200 OK",
-	"StatusCode": 200,
-	"Uncompressed": true
+	"StatusCode": 200
 }
