@@ -165,6 +165,13 @@ func mapStrings(val ref.Val) (map[string][]string, error) {
 			return nil, err
 		}
 		return v.(map[string][]string), nil
+	case map[any]any:
+		val := types.DefaultTypeAdapter.NativeToValue(iface)
+		v, err := val.ConvertToNative(reflectMapStringStringSliceType)
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]string), nil
 	case ref.Val:
 		v, err := iface.ConvertToNative(reflectMapStringStringSliceType)
 		if err != nil {
