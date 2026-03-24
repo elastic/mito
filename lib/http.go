@@ -934,6 +934,13 @@ func makeMapStrings(val reflect.Value) (reflect.Value, error) {
 			return reflect.Value{}, err
 		}
 		return reflect.ValueOf(v), nil
+	case map[any]any:
+		val := types.DefaultTypeAdapter.NativeToValue(iface)
+		v, err := val.ConvertToNative(reflectMapStringStringSliceType)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		return reflect.ValueOf(v), nil
 	case ref.Val:
 		v, err := iface.ConvertToNative(reflectMapStringStringSliceType)
 		if err != nil {
@@ -972,6 +979,13 @@ func makeStrings(val reflect.Value) (reflect.Value, error) {
 			dst[i] = v.(string)
 		}
 		return reflect.ValueOf(dst), nil
+	case []any:
+		val := types.DefaultTypeAdapter.NativeToValue(iface)
+		v, err := val.ConvertToNative(reflectStringSliceType)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		return reflect.ValueOf(v), nil
 	default:
 		return reflect.Value{}, fmt.Errorf("invalid type: %T", iface)
 	}
