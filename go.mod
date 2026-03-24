@@ -46,6 +46,7 @@ require (
 )
 
 retract (
+	v1.25.0 // Breaks map/list ConvertToNative due to cel-go v0.27.0 (google/cel-go#1261).
 	v1.20.1 // Self-retraction.
 	v1.20.0 // Used v1 of the AWS v4 signing SDK.
 )
