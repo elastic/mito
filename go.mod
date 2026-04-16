@@ -1,6 +1,6 @@
 module github.com/elastic/mito
 
-go 1.25.0
+go 1.25.8
 
 require (
 	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.17
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.27.0
+	github.com/google/cel-go v0.28.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.13.1

@@ -1,0 +1,16 @@
+! mito -data data.json src.cel
+cmp stderr want.txt
+
+-- data.json --
+{"url":"https://example.com/"}
+-- src.cel --
+get(state.url).Body.decode_json().records.map(r,
+//                             ^~~~ https://example.com/ is not serving JSON.
+	get(state.url+'/'+r.id).Body.decode_json()
+).as(events, {
+	"events": events,
+})
+-- want.txt --
+failed eval: ERROR: <input>:1:32: failed to unmarshal JSON message: invalid character '<' looking for beginning of value
+ | get(state.url).Body.decode_json().records.map(r,
+ | ...............................^
