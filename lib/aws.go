@@ -173,11 +173,11 @@ func signFromEnv(args ...ref.Val) ref.Val {
 	}
 	request, ok := args[0].(traits.Mapper)
 	if !ok {
-		return types.ValOrErr(request, "no such overload for "+name)
+		return types.ValOrErr(request, "no such overload for %s", name)
 	}
 	creds, err := config.NewEnvConfig()
 	if err != nil {
-		return types.NewErr(err.Error())
+		return types.NewErr("%v", err)
 	}
 	cargs, ok := args[1].(traits.Mapper)
 	if !ok {
@@ -193,7 +193,7 @@ func signFromShared(args ...ref.Val) ref.Val {
 	}
 	request, ok := args[0].(traits.Mapper)
 	if !ok {
-		return types.ValOrErr(request, "no such overload for "+name)
+		return types.ValOrErr(request, "no such overload for %s", name)
 	}
 	file, ok := args[1].(types.String)
 	if !ok {
@@ -226,11 +226,11 @@ func signFromShared(args ...ref.Val) ref.Val {
 		config.WithSharedConfigProfile(p),
 	)
 	if err != nil {
-		return types.NewErr(err.Error())
+		return types.NewErr("%v", err)
 	}
 	creds, err := cfg.Credentials.Retrieve(ctx)
 	if err != nil {
-		return types.NewErr(err.Error())
+		return types.NewErr("%v", err)
 	}
 
 	cargs, ok := args[3].(traits.Mapper)
@@ -247,7 +247,7 @@ func signFromCred(args ...ref.Val) ref.Val {
 	}
 	request, ok := args[0].(traits.Mapper)
 	if !ok {
-		return types.ValOrErr(request, "no such overload for "+name)
+		return types.ValOrErr(request, "no such overload for %s", name)
 	}
 	id, ok := args[1].(types.String)
 	if !ok {
@@ -288,27 +288,27 @@ func sign(request ref.Val, creds aws.Credentials, name string, args traits.Mappe
 	}
 	service, ok := args.Get(types.String("service")).(types.String)
 	if !ok {
-		return types.ValOrErr(service, "no such overload for "+name)
+		return types.ValOrErr(service, "no such overload for %s", name)
 	}
 	region, ok := args.Get(types.String("region")).(types.String)
 	if !ok {
-		return types.ValOrErr(region, "no such overload for "+name)
+		return types.ValOrErr(region, "no such overload for %s", name)
 	}
 	signed, ok := args.Get(types.String("sign_time")).(types.Timestamp)
 	if !ok {
-		return types.ValOrErr(signed, "no such overload for "+name)
+		return types.ValOrErr(signed, "no such overload for %s", name)
 	}
 	noHoist, ok := args.Get(types.String("no_hoist")).(types.Bool)
 	if !ok {
-		return types.ValOrErr(noHoist, "no such overload for "+name)
+		return types.ValOrErr(noHoist, "no such overload for %s", name)
 	}
 	noEscape, ok := args.Get(types.String("no_escape")).(types.Bool)
 	if !ok {
-		return types.ValOrErr(noEscape, "no such overload for "+name)
+		return types.ValOrErr(noEscape, "no such overload for %s", name)
 	}
 	disableSessionToken, ok := args.Get(types.String("disable_session_token")).(types.Bool)
 	if !ok {
-		return types.ValOrErr(disableSessionToken, "no such overload for "+name)
+		return types.ValOrErr(disableSessionToken, "no such overload for %s", name)
 	}
 	reqm, err := request.ConvertToNative(reflectMapStringAnyType)
 	if err != nil {

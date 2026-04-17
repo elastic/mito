@@ -540,7 +540,11 @@ func compile(src, root string, fold, details, coverage bool, libs ...cel.EnvOpti
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed folding optimization: %v", err)
 		}
-		ast, iss = cel.NewStaticOptimizer(folder).Optimize(env, ast)
+		opt, err := cel.NewStaticOptimizer(folder)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to make new static optimizer: %v", err)
+		}
+		ast, iss = opt.Optimize(env, ast)
 		if iss.Err() != nil {
 			return nil, nil, nil, fmt.Errorf("failed optimization: %v", iss.Err())
 		}
