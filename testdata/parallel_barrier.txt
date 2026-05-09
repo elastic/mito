@@ -1,0 +1,26 @@
+serve -barrier 3 -timeout 5s body.json
+expand src_var.cel src.cel
+
+mito -use http,json,parallel,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- body.json --
+{"ok":true}
+-- src_var.cel --
+[1, 2, 3].parallel(x, get("${URL}").Body.decode_json().with({"num": x}))
+-- want.txt --
+[
+	{
+		"num": 1,
+		"ok": true
+	},
+	{
+		"num": 2,
+		"ok": true
+	},
+	{
+		"num": 3,
+		"ok": true
+	}
+]
