@@ -54,6 +54,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/elastic/mito/internal/fb"
 	"github.com/elastic/mito/internal/httplog"
 	"github.com/elastic/mito/internal/rc"
 	"github.com/elastic/mito/lib"
@@ -80,6 +81,7 @@ func Main() int {
 	fold := flag.Bool("fold", false, "apply constant folding optimisation")
 	dumpState := flag.String("dump", "", "dump eval state ('always' or 'error')")
 	coverage := flag.String("coverage", "", "file to write an execution coverage report to (prefix if multiple executions are run)")
+	fbMode := flag.Bool("fb", false, "validate configuration against filebeat CEL input constraints (not covered by semver compatibility guarantees; validation rules track upstream filebeat changes)")
 	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	if *version {
@@ -96,6 +98,7 @@ func Main() int {
 	}
 	ctx := context.Background()
 	limit := rate.NewLimiter(1, 1)
+	var secretState map[string]any
 	if *cfgPath != "" {
 		f, err := os.Open(*cfgPath)
 		if err != nil {
@@ -103,13 +106,31 @@ func Main() int {
 			return 2
 		}
 		defer f.Close()
-		dec := yaml.NewDecoder(f)
+
 		var cfg Config
-		err = dec.Decode(&cfg)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 2
+		if *fbMode {
+			dec := yaml.NewDecoder(f)
+			var fbCfg fb.Config
+			err = dec.Decode(&fbCfg)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 2
+			}
+			if err := fbCfg.Validate(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 2
+			}
+			cfg = fbCfg.RC()
+			secretState = fbCfg.SecretState
+		} else {
+			dec := yaml.NewDecoder(f)
+			err = dec.Decode(&cfg)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 2
+			}
 		}
+
 		if len(cfg.Globals) != 0 {
 			libs = append(libs, lib.Globals(cfg.Globals))
 		}
@@ -218,6 +239,18 @@ func Main() int {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed parsing JSON data from %q: %s", *data, err)
 			return 2
+		}
+		if *fbMode {
+			if state, ok := input.(map[string]any); ok {
+				if err := fb.CheckState(state); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return 2
+				}
+				if len(secretState) != 0 {
+					state["secret"] = secretState
+					input = state
+				}
+			}
 		}
 		if *maxExecutions > 0 {
 			// Only provide remaining_executions if we have set a limit.

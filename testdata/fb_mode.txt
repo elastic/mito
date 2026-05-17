@@ -1,0 +1,85 @@
+# Test -fb flag rejects invalid auth config (missing password).
+! mito -fb -use http -cfg cfg_bad_auth.yaml src.cel
+stderr 'both user and password must be set'
+
+# Test -fb flag rejects missing resource URL.
+! mito -fb -use http -cfg cfg_no_resource_url.yaml src.cel
+stderr 'resource url must be set'
+
+# Test -fb flag rejects state with secret key.
+! mito -fb -use http -cfg cfg_good.yaml -data state_secret.json src.cel
+stderr 'state must not contain a "secret" key'
+
+# Test -fb flag rejects invalid retry config.
+! mito -fb -use http -cfg cfg_bad_retry.yaml src.cel
+stderr 'max_attempts must be greater than zero'
+
+# Test -fb flag rejects two auth methods.
+! mito -fb -use http -cfg cfg_two_auth.yaml src.cel
+stderr 'only one kind of auth can be enabled'
+
+# Test -fb flag accepts valid config and runs normally.
+serve hello.text
+expand src_var.cel src.cel
+mito -fb -use http -cfg cfg_good.yaml src.cel
+cmp stdout want.txt
+
+# Test -fb flag wires basic auth into HTTP client.
+serve hello.text admin secret
+expand src_var.cel src_auth.cel
+mito -fb -use http -cfg cfg_good.yaml src_auth.cel
+cmp stdout want.txt
+
+# Test -fb secret_state is injected into state.secret.
+mito -fb -cfg cfg_secret_state.yaml -data state_no_secret.json src_secret.cel
+cmp stdout want_secret.txt
+
+-- src_var.cel --
+string(get("${URL}").Body)
+-- src.cel --
+"placeholder"
+-- hello.text --
+hello
+-- cfg_bad_auth.yaml --
+auth:
+  basic:
+    user: admin
+-- cfg_no_resource_url.yaml --
+resource:
+  retry:
+    max_attempts: 3
+-- cfg_bad_retry.yaml --
+resource:
+  url: "http://localhost"
+  retry:
+    max_attempts: 0
+-- cfg_two_auth.yaml --
+auth:
+  basic:
+    user: admin
+    password: secret
+  token:
+    type: Bearer
+    value: abc123
+-- cfg_good.yaml --
+auth:
+  basic:
+    user: admin
+    password: secret
+resource:
+  url: "http://localhost"
+-- state_secret.json --
+{"secret": {"token": "do_not_put_this_here"}}
+-- state_no_secret.json --
+{"cursor": "abc"}
+-- cfg_secret_state.yaml --
+resource:
+  url: "http://localhost"
+secret_state:
+  api_key: "hunter2"
+-- src_secret.cel --
+state.secret.api_key
+-- want_secret.txt --
+"hunter2"
+-- want.txt --
+"hello\n"
