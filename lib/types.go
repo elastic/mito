@@ -91,6 +91,7 @@ var (
 	reflectMapStringAnyType         = reflect.TypeOf(map[string]interface{}(nil))
 	reflectMapStringStringSliceType = reflect.TypeOf(map[string][]string(nil))
 	reflectStringType               = reflect.TypeOf("")
+	reflectAnySliceType             = reflect.TypeOf([]any(nil))
 	reflectStringSliceType          = reflect.TypeOf([]string(nil))
 
 	structpbValueType = reflect.TypeOf((*structpb.Value)(nil))

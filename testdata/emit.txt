@@ -1,0 +1,33 @@
+mito -use json,collections,emit src.cel
+cmp stdout want.txt
+cmp stderr want_stderr.txt
+
+-- src.cel --
+[
+	// Two-arg form: no cursor.
+	[1, 2, 3].emit(x, {"value": x}),
+
+	// Three-arg form: with per-element cursor.
+	[
+		{"message": "hello", "id": 1},
+		{"message": "world", "id": 2},
+	].emit(item, {"message": item.message}, {"id": item.id}),
+]
+-- want_stderr.txt --
+EMIT: map[value:1]
+EMIT: map[value:2]
+EMIT: map[value:3]
+EMIT: map[message:hello] (cursor: map[id:1])
+EMIT: map[message:world] (cursor: map[id:2])
+-- want.txt --
+[
+	{
+		"published": 3
+	},
+	{
+		"cursor": {
+			"id": 2
+		},
+		"published": 2
+	}
+]

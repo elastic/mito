@@ -1,0 +1,21 @@
+mito -use lines,strings src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+"a\t1\nb\t2\nc\t3\n".decode_lines().map(line, line.split("\t"))
+-- want.txt --
+[
+	[
+		"a",
+		"1"
+	],
+	[
+		"b",
+		"2"
+	],
+	[
+		"c",
+		"3"
+	]
+]

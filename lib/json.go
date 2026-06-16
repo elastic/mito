@@ -23,11 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 )
 
 // JSON returns a cel.EnvOption to configure extended functions for JSON
@@ -105,6 +107,25 @@ import (
 //
 //	'{"a":1}{"b":2}'.decode_json_stream_string_numbers()   // return [{"a":"1"}, {"b":"2"}]
 //	b'{"a":1}{"b":2}'.decode_json_stream_string_numbers()  // return [{"a":"1"}, {"b":"2"}]
+//
+// # Decode JSON Stream (Lazy)
+//
+// decode_json_stream_lazy returns a lazy iterable that decodes concatenated
+// JSON values on demand from the receiver. Unlike decode_json_stream, values
+// are not materialised into a list; each value is decoded when the iterator
+// advances. This is useful for streaming large payloads through a
+// comprehension without holding all decoded records in memory.
+//
+// The receiver may be bytes, string, or a stream value (from stream_gzip or
+// stream_zip). When backed by a stream, decompression and decoding happen
+// together with no intermediate buffer.
+//
+//	<bytes>.decode_json_stream_lazy() -> <iterable<dyn>>
+//	<string>.decode_json_stream_lazy() -> <iterable<dyn>>
+//	<stream>.decode_json_stream_lazy() -> <iterable<dyn>>
+//
+// decode_json_stream_lazy_string_numbers is the same but uses UseNumber
+// decoding for integer precision beyond 2^52.
 func JSON(adapter types.Adapter) cel.EnvOption {
 	if adapter == nil {
 		adapter = types.DefaultTypeAdapter
@@ -238,6 +259,48 @@ func (l jsonLib) CompileOptions() []cel.EnvOption {
 				[]*cel.Type{cel.BytesType},
 				cel.DynType,
 				cel.UnaryBinding(catch(l.decodeJSONStreamUseNumber)),
+			),
+		),
+
+		cel.Function("decode_json_stream_lazy",
+			cel.MemberOverload(
+				"stream_decode_json_stream_lazy",
+				[]*cel.Type{streamCELType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamLazy)),
+			),
+			cel.MemberOverload(
+				"bytes_decode_json_stream_lazy",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamLazy)),
+			),
+			cel.MemberOverload(
+				"string_decode_json_stream_lazy",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamLazy)),
+			),
+		),
+
+		cel.Function("decode_json_stream_lazy_string_numbers",
+			cel.MemberOverload(
+				"stream_decode_json_stream_lazy_string_numbers",
+				[]*cel.Type{streamCELType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamLazyUseNumber)),
+			),
+			cel.MemberOverload(
+				"bytes_decode_json_stream_lazy_string_numbers",
+				[]*cel.Type{cel.BytesType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamLazyUseNumber)),
+			),
+			cel.MemberOverload(
+				"string_decode_json_stream_lazy_string_numbers",
+				[]*cel.Type{cel.StringType},
+				cel.DynType,
+				cel.UnaryBinding(catch(l.decodeJSONStreamLazyUseNumber)),
 			),
 		),
 	}
@@ -387,4 +450,111 @@ func (l jsonLib) decodeJSONStreamUseNumber(val ref.Val) ref.Val {
 		s = append(s, v)
 	}
 	return l.adapter.NativeToValue(s)
+}
+
+func (l jsonLib) decodeJSONStreamLazy(val ref.Val) ref.Val {
+	return l.lazyStream(val, false)
+}
+
+func (l jsonLib) decodeJSONStreamLazyUseNumber(val ref.Val) ref.Val {
+	return l.lazyStream(val, true)
+}
+
+func (l jsonLib) lazyStream(val ref.Val, useNum bool) ref.Val {
+	var r io.Reader
+	switch v := val.(type) {
+	case *streamVal:
+		r = v.reader
+	case types.Bytes:
+		r = bytes.NewReader(v)
+	case types.String:
+		r = bytes.NewReader([]byte(v))
+	default:
+		return types.NoSuchOverloadErr()
+	}
+	return &lazyJSONStream{reader: r, adapter: l.adapter, useNum: useNum}
+}
+
+var (
+	_ ref.Val         = (*lazyJSONStream)(nil)
+	_ traits.Iterable = (*lazyJSONStream)(nil)
+	_ traits.Iterator = (*jsonStreamIterator)(nil)
+)
+
+// lazyJSONStreamRefType is the runtime type for lazy JSON stream iterables.
+var lazyJSONStreamRefType = types.NewObjectType("lazy_json_stream", traits.IterableType)
+
+// lazyJSONStream is a ref.Val implementing traits.Iterable that decodes
+// concatenated JSON values on demand from an io.Reader. Each call to the
+// iterator's Next() decodes one value; previously decoded values are not
+// retained. This enables streaming decode of large NDJSON or concatenated
+// JSON payloads without materialising the full list.
+//
+// The underlying reader is consumed once. A second Iterator() call returns
+// an exhausted iterator.
+type lazyJSONStream struct {
+	reader  io.Reader
+	adapter types.Adapter
+	useNum  bool
+}
+
+func (s *lazyJSONStream) ConvertToNative(typeDesc reflect.Type) (any, error) {
+	return nil, fmt.Errorf("lazy JSON streams cannot be converted to %v", typeDesc)
+}
+
+func (s *lazyJSONStream) ConvertToType(typeVal ref.Type) ref.Val {
+	if typeVal == types.TypeType {
+		return types.NewTypeValue("lazy_json_stream")
+	}
+	return types.NewErr("type conversion error from 'lazy_json_stream' to '%s'", typeVal.TypeName())
+}
+
+func (s *lazyJSONStream) Equal(other ref.Val) ref.Val {
+	return types.NewErr("lazy JSON streams are not comparable")
+}
+
+func (s *lazyJSONStream) Type() ref.Type { return lazyJSONStreamRefType }
+
+func (s *lazyJSONStream) Value() any { return s.reader }
+
+func (s *lazyJSONStream) Iterator() traits.Iterator {
+	dec := json.NewDecoder(s.reader)
+	if s.useNum {
+		dec.UseNumber()
+	}
+	return &jsonStreamIterator{dec: dec, adapter: s.adapter}
+}
+
+// jsonStreamIterator wraps a json.Decoder as a traits.Iterator.
+type jsonStreamIterator struct {
+	dec     *json.Decoder
+	adapter types.Adapter
+}
+
+func (it *jsonStreamIterator) ConvertToNative(typeDesc reflect.Type) (any, error) {
+	return nil, fmt.Errorf("JSON stream iterators cannot be converted to %v", typeDesc)
+}
+
+func (it *jsonStreamIterator) ConvertToType(typeVal ref.Type) ref.Val {
+	return types.NewErr("type conversion error from 'json_stream_iterator' to '%s'", typeVal.TypeName())
+}
+
+func (it *jsonStreamIterator) Equal(other ref.Val) ref.Val {
+	return types.NewErr("JSON stream iterators are not comparable")
+}
+
+func (it *jsonStreamIterator) Type() ref.Type { return types.IteratorType }
+
+func (it *jsonStreamIterator) Value() any { return it.dec }
+
+func (it *jsonStreamIterator) HasNext() ref.Val {
+	return types.Bool(it.dec.More())
+}
+
+func (it *jsonStreamIterator) Next() ref.Val {
+	var v any
+	if err := it.dec.Decode(&v); err != nil {
+		return types.NewErr("decode: %v", err)
+	}
+	return it.adapter.NativeToValue(v)
 }
