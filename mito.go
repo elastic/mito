@@ -208,6 +208,7 @@ func Main() int {
 			return 2
 		}
 	}
+	libMap["emit"] = lib.Emit(func() lib.Emitter { return stderrEmitter{} })
 	if *use == "all" {
 		for _, l := range libMap {
 			libs = append(libs, l)
@@ -512,6 +513,9 @@ var (
 		"strings":     lib.Strings(),
 		"printf":      lib.Printf(),
 		"xml":         nil, // This will be populated by Main.
+		"stream":      lib.Stream(),
+		"csv":         lib.CSV(),
+		"lines":       lib.Lines(),
 	}
 
 	mimetypes = map[string]interface{}{
@@ -749,4 +753,16 @@ func oAuth2Client(cfg OAuth2) (*http.Client, error) {
 	default:
 		return nil, errors.New("oauth2: unknown provider")
 	}
+}
+
+// stderrEmitter prints emitted events to stderr for the mito CLI.
+type stderrEmitter struct{}
+
+func (stderrEmitter) Emit(value, cursor any) error {
+	if cursor != nil {
+		fmt.Fprintf(os.Stderr, "EMIT: %v (cursor: %v)\n", value, cursor)
+	} else {
+		fmt.Fprintf(os.Stderr, "EMIT: %v\n", value)
+	}
+	return nil
 }

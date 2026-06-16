@@ -1,0 +1,20 @@
+mito -use csv src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+b'''
+alice,30
+bob,25
+'''.decode_csv_stream_lazy_no_header().map(row, row)
+-- want.txt --
+[
+	[
+		"alice",
+		"30"
+	],
+	[
+		"bob",
+		"25"
+	]
+]
