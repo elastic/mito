@@ -1,0 +1,17 @@
+serve -barrier 3 -timeout 5s body.json
+expand src_var.cel src.cel
+
+mito -use http src.cel
+! stderr .
+cmp stdout want.txt
+
+-- body.json --
+{"ok":true}
+-- src_var.cel --
+[1, 2, 3].map(x, string(get("${URL}").Body))
+-- want.txt --
+[
+	"barrier timeout: only 1 of 3 requests arrived",
+	"barrier timeout: only 2 of 3 requests arrived",
+	"{\"ok\":true}\n"
+]
