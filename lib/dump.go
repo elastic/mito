@@ -24,8 +24,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common"
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common"
 )
 
 // NewDump returns an evaluation dump that can be used to examine the complete

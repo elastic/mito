@@ -25,11 +25,11 @@ import (
 	"io"
 	"reflect"
 
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/common/types/ref"
+	"cel.dev/cel-go/common/types/traits"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
 )
 
 // JSON returns a cel.EnvOption to configure extended functions for JSON
@@ -402,7 +402,7 @@ func (l jsonLib) decodeJSONUseNumber(val ref.Val) ref.Val {
 			return types.NewErr("failed to unmarshal JSON message: invalid character '%c' after top-level value", b[0])
 		}
 	}
-	return l.adapter.NativeToValue(v)
+	return jsonNumberNativeToValue(l.adapter, v)
 }
 
 func (l jsonLib) decodeJSONStream(val ref.Val) ref.Val {
@@ -447,7 +447,7 @@ func (l jsonLib) decodeJSONStreamUseNumber(val ref.Val) ref.Val {
 		if err != nil {
 			return types.NewErr("failed to unmarshal JSON stream: %v", err)
 		}
-		s = append(s, v)
+		s = append(s, jsonNumberToString(v))
 	}
 	return l.adapter.NativeToValue(s)
 }
@@ -522,13 +522,14 @@ func (s *lazyJSONStream) Iterator() traits.Iterator {
 	if s.useNum {
 		dec.UseNumber()
 	}
-	return &jsonStreamIterator{dec: dec, adapter: s.adapter}
+	return &jsonStreamIterator{dec: dec, adapter: s.adapter, useNum: s.useNum}
 }
 
 // jsonStreamIterator wraps a json.Decoder as a traits.Iterator.
 type jsonStreamIterator struct {
 	dec     *json.Decoder
 	adapter types.Adapter
+	useNum  bool
 }
 
 func (it *jsonStreamIterator) ConvertToNative(typeDesc reflect.Type) (any, error) {
@@ -556,5 +557,60 @@ func (it *jsonStreamIterator) Next() ref.Val {
 	if err := it.dec.Decode(&v); err != nil {
 		return types.NewErr("decode: %v", err)
 	}
+	if it.useNum {
+		v = jsonNumberToString(v)
+	}
 	return it.adapter.NativeToValue(v)
+}
+
+// jsonNumberNativeToValue converts a Go value decoded with json.UseNumber into
+// a CEL ref.Val. For map[string]any it returns a jsonNumberMap so that
+// encode_json round-trips numbers as bare JSON numbers while CEL field access
+// returns strings.
+func jsonNumberNativeToValue(adapter types.Adapter, v any) ref.Val {
+	raw, ok := v.(map[string]any)
+	if !ok {
+		return adapter.NativeToValue(jsonNumberToString(v))
+	}
+	celVal := adapter.NativeToValue(jsonNumberToString(raw))
+	m, ok := celVal.(traits.Mapper)
+	if !ok {
+		return celVal
+	}
+	return jsonNumberMap{Mapper: m, raw: raw}
+}
+
+// jsonNumberMap wraps a CEL map and overrides Value() to return the original
+// decoded map with json.Number values intact. This allows encode_json to
+// round-trip numbers faithfully while CEL field access still returns strings.
+type jsonNumberMap struct {
+	traits.Mapper
+	raw map[string]any
+}
+
+func (m jsonNumberMap) Value() any { return m.raw }
+
+// jsonNumberToString recursively converts json.Number values to their string
+// representation, returning a new value without modifying the input. This is
+// needed because cel-go v0.32.0 and later converts json.Number to Int or
+// Double in NativeToValue, losing the original string form that UseNumber-based
+// decoding is intended to preserve.
+func jsonNumberToString(v any) any {
+	switch v := v.(type) {
+	case json.Number:
+		return v.String()
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for k, val := range v {
+			out[k] = jsonNumberToString(val)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, val := range v {
+			out[i] = jsonNumberToString(val)
+		}
+		return out
+	}
+	return v
 }

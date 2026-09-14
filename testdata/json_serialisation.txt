@@ -1,0 +1,24 @@
+mito -use json,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+"{\"n\": 999999999999999999999}".decode_json_string_numbers().as(o,
+	{
+		"as_cel_value": o,
+		"n_is_string": type(o.n) == string,
+		"encoded_json_text": o.encode_json(),
+		"round_trip_text_equal": o.encode_json() == "{\"n\":999999999999999999999}",
+		"rebuilt_map_encoded": {"n": o.n}.encode_json(),
+	}
+)
+-- want.txt --
+{
+	"as_cel_value": {
+		"n": "999999999999999999999"
+	},
+	"encoded_json_text": "{\"n\":999999999999999999999}",
+	"n_is_string": true,
+	"rebuilt_map_encoded": "{\"n\":\"999999999999999999999\"}",
+	"round_trip_text_equal": true
+}

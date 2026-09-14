@@ -20,10 +20,10 @@ package lib
 import (
 	"reflect"
 
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/common/types/ref"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
 )
 
 // Debug returns a cel.EnvOption to configure extended functions for allowing
