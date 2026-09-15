@@ -78,6 +78,8 @@ func Main() int {
 	insecure := flag.Bool("insecure", false, "disable TLS verification in the HTTP client")
 	logTrace := flag.Bool("log_requests", false, "log request traces to stderr (go1.21+)")
 	maxTraceBody := flag.Int("max_log_body", 1000, "maximum length of body logged in request traces (go1.21+)")
+	maxConcurrency := flag.Int("max_concurrency", 3, "maximum concurrency in parallel macro")
+	globalConcurrency := flag.Int("global_concurrency", 0, "global concurrency limit across all parallel calls (0 = no limit)")
 	fold := flag.Bool("fold", false, "apply constant folding optimisation")
 	dumpState := flag.String("dump", "", "dump eval state ('always' or 'error')")
 	coverage := flag.String("coverage", "", "file to write an execution coverage report to (prefix if multiple executions are run)")
@@ -209,6 +211,7 @@ func Main() int {
 		}
 	}
 	libMap["emit"] = lib.Emit(func() lib.Emitter { return stderrEmitter{} })
+	libMap["parallel"] = lib.Parallel(*maxConcurrency, *globalConcurrency)
 	if *use == "all" {
 		for _, l := range libMap {
 			libs = append(libs, l)
@@ -516,6 +519,7 @@ var (
 		"stream":      lib.Stream(),
 		"csv":         lib.CSV(),
 		"lines":       lib.Lines(),
+		"parallel":    nil, // This will be populated by Main.
 	}
 
 	mimetypes = map[string]interface{}{

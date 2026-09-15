@@ -1,0 +1,31 @@
+mito src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	[1,2,3].parallel(v, v),
+
+	{
+		"one":1,
+		"two":2,
+		"three":3,
+	}.parallel(k, v,
+		{"key": k, "val": v}
+	).transformMapEntry(_, v, 
+		{v.key: v.val}
+	),
+]
+-- want.txt --
+[
+	[
+		1,
+		2,
+		3
+	],
+	{
+		"one": 1,
+		"three": 3,
+		"two": 2
+	}
+]
