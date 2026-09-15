@@ -1,14 +1,14 @@
 module github.com/elastic/mito
 
-go 1.25.8
+go 1.26.8
 
 require (
 	aqwari.net/xml v0.0.0-20210331023308-d9421b293817
+	cel.dev/cel-go v0.32.0
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.29.17
 	github.com/goccy/go-yaml v1.9.5
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.28.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.3.0
 	github.com/rogpeppe/go-internal v1.13.1
@@ -36,6 +36,7 @@ require (
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect

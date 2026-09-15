@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/cel-go/interpreter"
+	"cel.dev/cel-go/interpreter"
 	"github.com/google/go-cmp/cmp"
 	"github.com/rogpeppe/go-internal/testscript"
 

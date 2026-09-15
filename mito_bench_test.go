@@ -25,8 +25,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"cel.dev/cel-go/cel"
 	"github.com/elastic/mito/lib"
-	"github.com/google/cel-go/cel"
 )
 
 var (

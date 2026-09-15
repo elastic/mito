@@ -25,10 +25,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter"
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common"
+	"cel.dev/cel-go/common/types/ref"
+	"cel.dev/cel-go/interpreter"
 )
 
 // NewCoverage return an execution coverage statistics collector for the
@@ -52,7 +52,7 @@ type Coverage struct {
 // ProgramOption return a cel.ProgramOption that can be used in a call to
 // cel.Env.Program to collect coverage information from the program's execution.
 func (c *Coverage) ProgramOption() cel.ProgramOption {
-	return cel.CustomDecorator(func(i interpreter.Interpretable) (interpreter.Interpretable, error) {
+	return cel.CustomDecoratorV2(func(i interpreter.InterpretableV2) (interpreter.InterpretableV2, error) {
 		c.decorator.all[i.ID()] = true
 		switch i := i.(type) {
 		case interpreter.InterpretableAttribute:
@@ -65,23 +65,22 @@ func (c *Coverage) ProgramOption() cel.ProgramOption {
 			return coverageConstructor{InterpretableConstructor: i, cov: c.decorator.cov}, nil
 		default:
 			// Check that we do not have more methods on the original
-			// type than the base interpreter.Interpretable type. In
+			// type than the base interpreter.InterpretableV2 type. In
 			// the case that we hit this, the program will probably
 			// run, but may give unexpected results.
-			var ii interpreter.Interpretable
+			var ii interpreter.InterpretableV2
 			if exportedMethods(reflect.TypeOf(i)) > exportedMethods(reflect.TypeOf(&ii).Elem()) {
 				return nil, fmt.Errorf("unsupported interpretable type: %T", i)
 			}
-			return coverage{Interpretable: i, cov: c.decorator.cov}, nil
+			return coverageV2{InterpretableV2: i, cov: c.decorator.cov}, nil
 		}
 	})
 }
 
 func exportedMethods(typ reflect.Type) int {
 	var n int
-	for i := 0; i < typ.NumMethod(); i++ {
-		m := typ.Method(i)
-		if m.IsExported() {
+	for i := range typ.NumMethod() {
+		if typ.Method(i).IsExported() {
 			n++
 		}
 	}
@@ -219,19 +218,27 @@ func srcAnnot(ast *cel.Ast, src common.Source, nodes []int64, mark string) strin
 }
 
 type coverage struct {
-	interpreter.Interpretable
 	all map[int64]bool
 	cov map[int64]bool
 }
 
-func (c coverage) Eval(a interpreter.Activation) ref.Val {
+type coverageV2 struct {
+	interpreter.InterpretableV2
+	cov map[int64]bool
+}
+
+func (c coverageV2) Eval(a interpreter.Activation) ref.Val {
 	c.cov[c.ID()] = true
-	return c.Interpretable.Eval(a)
+	return c.InterpretableV2.Eval(a)
+}
+
+func (c coverageV2) Exec(f *interpreter.ExecutionFrame) ref.Val {
+	c.cov[c.ID()] = true
+	return c.InterpretableV2.Exec(f)
 }
 
 type coverageAttribute struct {
 	interpreter.InterpretableAttribute
-	all map[int64]bool
 	cov map[int64]bool
 }
 
@@ -240,9 +247,13 @@ func (c coverageAttribute) Eval(a interpreter.Activation) ref.Val {
 	return c.InterpretableAttribute.Eval(a)
 }
 
+func (c coverageAttribute) Exec(f *interpreter.ExecutionFrame) ref.Val {
+	c.cov[c.ID()] = true
+	return c.InterpretableAttribute.Exec(f)
+}
+
 type coverageCall struct {
 	interpreter.InterpretableCall
-	all map[int64]bool
 	cov map[int64]bool
 }
 
@@ -251,9 +262,13 @@ func (c coverageCall) Eval(a interpreter.Activation) ref.Val {
 	return c.InterpretableCall.Eval(a)
 }
 
+func (c coverageCall) Exec(f *interpreter.ExecutionFrame) ref.Val {
+	c.cov[c.ID()] = true
+	return c.InterpretableCall.Exec(f)
+}
+
 type coverageConst struct {
 	interpreter.InterpretableConst
-	all map[int64]bool
 	cov map[int64]bool
 }
 
@@ -262,15 +277,24 @@ func (c coverageConst) Eval(a interpreter.Activation) ref.Val {
 	return c.InterpretableConst.Eval(a)
 }
 
+func (c coverageConst) Exec(f *interpreter.ExecutionFrame) ref.Val {
+	c.cov[c.ID()] = true
+	return c.InterpretableConst.Exec(f)
+}
+
 type coverageConstructor struct {
 	interpreter.InterpretableConstructor
-	all map[int64]bool
 	cov map[int64]bool
 }
 
 func (c coverageConstructor) Eval(a interpreter.Activation) ref.Val {
 	c.cov[c.ID()] = true
 	return c.InterpretableConstructor.Eval(a)
+}
+
+func (c coverageConstructor) Exec(f *interpreter.ExecutionFrame) ref.Val {
+	c.cov[c.ID()] = true
+	return c.InterpretableConstructor.Exec(f)
 }
 
 // LineCoverage is the execution coverage data for a single line of a CEL

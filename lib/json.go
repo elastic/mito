@@ -25,11 +25,11 @@ import (
 	"io"
 	"reflect"
 
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/common/types/ref"
+	"cel.dev/cel-go/common/types/traits"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
 )
 
 // JSON returns a cel.EnvOption to configure extended functions for JSON
@@ -402,7 +402,7 @@ func (l jsonLib) decodeJSONUseNumber(val ref.Val) ref.Val {
 			return types.NewErr("failed to unmarshal JSON message: invalid character '%c' after top-level value", b[0])
 		}
 	}
-	return l.adapter.NativeToValue(v)
+	return l.adapter.NativeToValue(preserveJSONNumbers(v))
 }
 
 func (l jsonLib) decodeJSONStream(val ref.Val) ref.Val {
@@ -447,7 +447,7 @@ func (l jsonLib) decodeJSONStreamUseNumber(val ref.Val) ref.Val {
 		if err != nil {
 			return types.NewErr("failed to unmarshal JSON stream: %v", err)
 		}
-		s = append(s, v)
+		s = append(s, preserveJSONNumbers(v))
 	}
 	return l.adapter.NativeToValue(s)
 }
@@ -522,13 +522,14 @@ func (s *lazyJSONStream) Iterator() traits.Iterator {
 	if s.useNum {
 		dec.UseNumber()
 	}
-	return &jsonStreamIterator{dec: dec, adapter: s.adapter}
+	return &jsonStreamIterator{dec: dec, adapter: s.adapter, useNum: s.useNum}
 }
 
 // jsonStreamIterator wraps a json.Decoder as a traits.Iterator.
 type jsonStreamIterator struct {
 	dec     *json.Decoder
 	adapter types.Adapter
+	useNum  bool
 }
 
 func (it *jsonStreamIterator) ConvertToNative(typeDesc reflect.Type) (any, error) {
@@ -556,5 +557,37 @@ func (it *jsonStreamIterator) Next() ref.Val {
 	if err := it.dec.Decode(&v); err != nil {
 		return types.NewErr("decode: %v", err)
 	}
+	if it.useNum {
+		v = preserveJSONNumbers(v)
+	}
 	return it.adapter.NativeToValue(v)
+}
+
+// rawNumber is a JSON number kept in its original textual form. cel-go v0.32.0
+// converts json.Number to Int or Double in NativeToValue, but rawNumber is a
+// distinct named type so the json.Number case does not match; cel-go falls
+// through to the reflect.String path and exposes it as a CEL string.
+// json.Marshal calls MarshalJSON and emits the number unquoted, so encode_json
+// round-trips numbers at any depth without loss of precision.
+type rawNumber string
+
+func (n rawNumber) MarshalJSON() ([]byte, error) { return json.Marshal(json.Number(n)) }
+
+// preserveJSONNumbers recursively replaces json.Number values with rawNumber
+// so that NativeToValue treats them as strings while json.Marshal emits them
+// as bare numbers.
+func preserveJSONNumbers(v any) any {
+	switch v := v.(type) {
+	case json.Number:
+		return rawNumber(v)
+	case map[string]any:
+		for k, val := range v {
+			v[k] = preserveJSONNumbers(val)
+		}
+	case []any:
+		for i, val := range v {
+			v[i] = preserveJSONNumbers(val)
+		}
+	}
+	return v
 }

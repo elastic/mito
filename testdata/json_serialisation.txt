@@ -1,0 +1,41 @@
+mito -use json,collections src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+"{\"n\": 999999999999999999999}".decode_json_string_numbers().as(o,
+	{
+		"as_cel_value": o,
+		"n_is_string": type(o.n) == string,
+		"encoded_json_text": o.encode_json(),
+		"round_trip_text_equal": o.encode_json() == "{\"n\":999999999999999999999}",
+		"rebuilt_map_encoded": {"n": o.n}.encode_json(),
+		"nested_map":      "{\"a\":{\"n\":999999999999999999999}}".decode_json_string_numbers().a.encode_json(),
+		"nested_list":     "{\"l\":[1,2]}".decode_json_string_numbers().l.encode_json(),
+		"top_level_list":  "[1,2]".decode_json_string_numbers().encode_json(),
+		"entries_map":     "{\"entries\":[{\"id\":123,\"n\":999999999999999999999}]}".decode_json_string_numbers().entries.map(e, e.encode_json()),
+		"stream_map":      "{\"a\":1}\n{\"b\":2}".decode_json_stream_string_numbers().map(e, e.encode_json()),
+		"stream_encode":   "{\"a\":1}\n{\"b\":2}".decode_json_stream_string_numbers().encode_json(),
+	}
+)
+-- want.txt --
+{
+	"as_cel_value": {
+		"n": "999999999999999999999"
+	},
+	"encoded_json_text": "{\"n\":999999999999999999999}",
+	"entries_map": [
+		"{\"id\":123,\"n\":999999999999999999999}"
+	],
+	"n_is_string": true,
+	"nested_list": "[1,2]",
+	"nested_map": "{\"n\":999999999999999999999}",
+	"rebuilt_map_encoded": "{\"n\":\"999999999999999999999\"}",
+	"round_trip_text_equal": true,
+	"stream_encode": "[{\"a\":1},{\"b\":2}]",
+	"stream_map": [
+		"{\"a\":1}",
+		"{\"b\":2}"
+	],
+	"top_level_list": "[1,2]"
+}

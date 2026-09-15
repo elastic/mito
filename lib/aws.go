@@ -23,13 +23,13 @@ import (
 	"io"
 	"os"
 
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/common/types/ref"
+	"cel.dev/cel-go/common/types/traits"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4_creds "github.com/aws/aws-sdk-go-v2/aws/signer/v4" // ¯\_(ツ)_/¯
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
 )
 
 // AWS returns a cel.EnvOption to configure extended functions for

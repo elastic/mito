@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/checker/decls"
 	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
