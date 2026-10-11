@@ -19,7 +19,7 @@ get("http://www.example.com/").as(resp,
 	"Close": false,
 	"Header": {
 		"Content-Type": [
-			"text/html"
+			"text/html; charset=utf-8"
 		]
 	},
 	"Proto": "HTTP/1.1",
