@@ -521,7 +521,7 @@ func (l httpLib) doHead(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	rm, err := respToMap(resp, l.options.MaxBodySize)
+	rm, err := respToMap(resp, resp.Body, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -556,7 +556,7 @@ func (l httpLib) doGet(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	rm, err := respToMap(resp, l.options.MaxBodySize)
+	rm, err := respToMap(resp, resp.Body, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -615,7 +615,7 @@ func (l httpLib) doPost(args ...ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	rm, err := respToMap(resp, l.options.MaxBodySize)
+	rm, err := respToMap(resp, resp.Body, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
@@ -740,7 +740,9 @@ func reqToMap(req *http.Request, url, body ref.Val, max int64) (map[string]inter
 		rm["Trailer"] = req.Trailer
 	}
 	if req.Response != nil {
-		resp, err := respToMap(req.Response, max)
+		// The body of a redirect response has already been consumed
+		// and closed by the http.Client, so it is not read here.
+		resp, err := respToMap(req.Response, nil, max)
 		if err != nil {
 			return nil, err
 		}
@@ -749,7 +751,11 @@ func reqToMap(req *http.Request, url, body ref.Val, max int64) (map[string]inter
 	return rm, nil
 }
 
-func respToMap(resp *http.Response, max int64) (map[string]interface{}, error) {
+// respToMap returns a map representation of resp. The body is read, up to
+// max bytes, from body and then closed. If body is nil, the Body field is
+// empty and nothing is read; this is used for the intermediate responses
+// of a redirect chain, whose bodies the http.Client has already closed.
+func respToMap(resp *http.Response, body io.ReadCloser, max int64) (map[string]interface{}, error) {
 	rm := map[string]interface{}{
 		"Status":        resp.Status,
 		"StatusCode":    resp.StatusCode,
@@ -762,10 +768,12 @@ func respToMap(resp *http.Response, max int64) (map[string]interface{}, error) {
 		"Uncompressed":  resp.Uncompressed,
 	}
 	var buf bytes.Buffer
-	_, err := io.Copy(&buf, limitBody(resp.Body, max))
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
+	if body != nil {
+		_, err := io.Copy(&buf, limitBody(body, max))
+		body.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 	rm["Body"] = buf.Bytes()
 	if resp.TransferEncoding != nil {
@@ -851,7 +859,7 @@ func (l httpLib) doRequest(arg ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
-	respm, err := respToMap(resp, l.options.MaxBodySize)
+	respm, err := respToMap(resp, resp.Body, l.options.MaxBodySize)
 	if err != nil {
 		return types.NewErr("%s", err)
 	}
