@@ -1,0 +1,39 @@
+# Lazy decoders report a decoding error once and then stop, rather than
+# losing it or never ending. Error text from encoding/json differs between Go
+# versions, so only the prefix is checked.
+mito -use json,csv,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{
+	"json_syntax":    try(b"{\"a\":1} {bad".decode_json_stream_lazy().map(x, x)).startsWith("decode: "),
+	"json_truncated": try(b"{\"a\":1} {\"b\":".decode_json_stream_lazy().map(x, x)).startsWith("decode: "),
+	"json_clean":     b"{\"a\":1}\n{\"b\":2}\n".decode_json_stream_lazy().map(x, x),
+	"csv_syntax":     try(b"h1,h2\n1,2\n3,\"4\n".decode_csv_stream_lazy().map(x, x)).startsWith("csv: parse error"),
+	"csv_ragged":     try(b"h1,h2\n1,2\n3\n4,5\n".decode_csv_stream_lazy().map(x, x)).startsWith("csv: record on line 3"),
+	"json_stray_close": try(b"{\"a\":1} ]".decode_json_stream_lazy().map(x, x)).startsWith("decode: "),
+	"csv_clean":      b"h1,h2\n1,2\n".decode_csv_stream_lazy().map(x, x),
+}
+-- want.txt --
+{
+	"csv_clean": [
+		{
+			"h1": "1",
+			"h2": "2"
+		}
+	],
+	"csv_ragged": true,
+	"csv_syntax": true,
+	"json_clean": [
+		{
+			"a": 1
+		},
+		{
+			"b": 2
+		}
+	],
+	"json_stray_close": true,
+	"json_syntax": true,
+	"json_truncated": true
+}

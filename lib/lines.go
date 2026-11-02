@@ -138,10 +138,14 @@ func (s *lazyLineStream) Iterator() traits.Iterator {
 }
 
 // lineIterator wraps a bufio.Scanner as a traits.Iterator.
+//
+// A scanner error, such as a read error or a line longer than the scanner
+// limit, is returned once by Next, after which the iterator is done.
 type lineIterator struct {
 	scanner *bufio.Scanner
 	scanned bool
 	hasMore bool
+	failed  bool
 }
 
 func (it *lineIterator) ConvertToNative(typeDesc reflect.Type) (any, error) {
@@ -161,11 +165,21 @@ func (it *lineIterator) Type() ref.Type { return types.IteratorType }
 func (it *lineIterator) Value() any { return it.scanner }
 
 func (it *lineIterator) HasNext() ref.Val {
+	if it.failed {
+		// A scanner can return buffered data after an error, so do not
+		// scan again.
+		return types.False
+	}
 	if !it.scanned {
 		it.hasMore = it.scanner.Scan()
 		it.scanned = true
 	}
-	return types.Bool(it.hasMore)
+	if it.hasMore {
+		return types.True
+	}
+	// Report a scanner error through Next so it is not mistaken for the end
+	// of the input.
+	return types.Bool(it.scanner.Err() != nil)
 }
 
 func (it *lineIterator) Next() ref.Val {
@@ -174,7 +188,9 @@ func (it *lineIterator) Next() ref.Val {
 	}
 	it.scanned = false
 	if !it.hasMore {
-		if err := it.scanner.Err(); err != nil {
+		err := it.scanner.Err()
+		if err != nil && !it.failed {
+			it.failed = true
 			return types.NewErr("decode_lines: %v", err)
 		}
 		return types.NewErr("decode_lines: no more lines")
