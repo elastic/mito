@@ -526,10 +526,22 @@ func (s *lazyJSONStream) Iterator() traits.Iterator {
 }
 
 // jsonStreamIterator wraps a json.Decoder as a traits.Iterator.
+//
+// HasNext decodes one value ahead and holds it for Next. This is needed
+// because json.Decoder.More does not report read errors consistently: it
+// returns false on a read error with some versions of encoding/json, so the
+// error is lost, and true with others, so a loop on HasNext never ends. A
+// decoding error is returned once by Next, after which the iterator is done.
 type jsonStreamIterator struct {
 	dec     *json.Decoder
 	adapter types.Adapter
 	useNum  bool
+
+	// next and err hold the result of the decode started by HasNext.
+	next   any
+	err    error
+	peeked bool
+	done   bool
 }
 
 func (it *jsonStreamIterator) ConvertToNative(typeDesc reflect.Type) (any, error) {
@@ -549,12 +561,35 @@ func (it *jsonStreamIterator) Type() ref.Type { return types.IteratorType }
 func (it *jsonStreamIterator) Value() any { return it.dec }
 
 func (it *jsonStreamIterator) HasNext() ref.Val {
-	return types.Bool(it.dec.More())
+	it.peek()
+	return types.Bool(!it.done)
+}
+
+// peek decodes the next value unless one is already held or the iterator is
+// done. A clean end of input marks the iterator done; any other error is held
+// for Next to return.
+func (it *jsonStreamIterator) peek() {
+	if it.done || it.peeked {
+		return
+	}
+	it.next = nil
+	it.err = it.dec.Decode(&it.next)
+	it.peeked = true
+	if it.err == io.EOF {
+		it.err = nil
+		it.done = true
+	}
 }
 
 func (it *jsonStreamIterator) Next() ref.Val {
-	var v any
-	if err := it.dec.Decode(&v); err != nil {
+	it.peek()
+	if it.done {
+		return types.NewErr("decode: no more values")
+	}
+	v, err := it.next, it.err
+	it.next, it.err, it.peeked = nil, nil, false
+	if err != nil {
+		it.done = true
 		return types.NewErr("decode: %v", err)
 	}
 	if it.useNum {

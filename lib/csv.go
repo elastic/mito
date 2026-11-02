@@ -211,16 +211,19 @@ func (it *csvStreamIterator) HasNext() ref.Val {
 	if it.done {
 		return types.False
 	}
-	if it.next != nil {
+	if it.next != nil || it.err != nil {
 		return types.True
 	}
 	rec, err := it.cr.Read()
-	if err != nil {
+	if err == io.EOF {
 		it.done = true
-		if err != io.EOF {
-			it.err = err
-		}
 		return types.False
+	}
+	if err != nil {
+		// Report the error through Next so it is not mistaken for the end
+		// of the input.
+		it.err = err
+		return types.True
 	}
 	it.next = rec
 	return types.True
@@ -231,7 +234,10 @@ func (it *csvStreamIterator) Next() ref.Val {
 	it.next = nil
 	if rec == nil {
 		if it.err != nil {
-			return types.NewErr("csv: %v", it.err)
+			err := it.err
+			it.err = nil
+			it.done = true
+			return types.NewErr("csv: %v", err)
 		}
 		return types.NewErr("csv: no more rows")
 	}
