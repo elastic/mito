@@ -36,8 +36,8 @@ import (
 //
 // decode_lines returns a lazy iterable that yields one string per line from
 // the receiver. Lines are split by newline; the trailing newline is stripped.
-// The receiver may be bytes, string, or a stream value (from stream_gzip or
-// stream_zip).
+// The receiver may be bytes, string, or a stream value (from a stream producer
+// such as stream_gzip).
 //
 //	<bytes>.decode_lines() -> <iterable<string>>
 //	<string>.decode_lines() -> <iterable<string>>

@@ -18,6 +18,7 @@
 package lib
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bufio"
 	"bytes"
@@ -412,5 +413,83 @@ func expandZip(z *zip.Reader) ref.Val {
 	return types.DefaultTypeAdapter.NativeToValue(map[string]interface{}{
 		"File":    files,
 		"Comment": z.Comment,
+	})
+}
+
+// Tar provides a file transform that returns a <map<dyn>> from an io.Reader
+// holding tar archive data. It should be handed to the File or MIME lib with
+//
+//	File(map[string]interface{}{
+//		"application/x-tar": lib.Tar,
+//	})
+//
+// or
+//
+//	MIME(map[string]interface{}{
+//		"application/x-tar": lib.Tar,
+//	})
+//
+// The returned map has a "File" list with an element for each archive entry
+// holding the keys Name, Type, Linkname, IsDir, Size, Mode, Modified and Data.
+// Type is the single-character tar type flag: "0" for a regular file, "5" for
+// a directory, "2" for a symbolic link, "1" for a hard link, and so on.
+// All entry types are included, so an index into this list is not the same as
+// the index taken by stream_tar, which counts only regular files. Data is empty
+// for entries that are not regular files. Pax global headers are omitted.
+//
+// Example:
+//
+//	file('hello.tar', 'application/x-tar')
+//
+//	might return:
+//
+//	{
+//	    "File": [
+//	        {
+//	            "Data": "aGVsbG8gd29ybGQhCg==",
+//	            "IsDir": false,
+//	            "Linkname": "",
+//	            "Mode": 420,
+//	            "Modified": "2022-04-14T21:09:32+09:30",
+//	            "Name": "a.txt",
+//	            "Size": 13,
+//	            "Type": "0"
+//	        }
+//	    ]
+//	}
+//
+// Note that the entire contents of the tar file is expanded into memory.
+func Tar(r io.Reader) ref.Val {
+	tr := tar.NewReader(r)
+	files := []map[string]interface{}{}
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return types.NewErr("tar: %s", err)
+		}
+		if h.Typeflag == tar.TypeXGlobalHeader {
+			continue
+		}
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, tr)
+		if err != nil {
+			return types.NewErr("tar: %s", err)
+		}
+		files = append(files, map[string]interface{}{
+			"Name":     h.Name,
+			"Type":     string([]byte{h.Typeflag}),
+			"Linkname": h.Linkname,
+			"IsDir":    h.FileInfo().IsDir(),
+			"Size":     h.Size,
+			"Mode":     h.Mode,
+			"Modified": h.ModTime,
+			"Data":     buf.Bytes(),
+		})
+	}
+	return types.DefaultTypeAdapter.NativeToValue(map[string]interface{}{
+		"File": files,
 	})
 }
