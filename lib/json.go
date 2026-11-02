@@ -116,9 +116,9 @@ import (
 // advances. This is useful for streaming large payloads through a
 // comprehension without holding all decoded records in memory.
 //
-// The receiver may be bytes, string, or a stream value (from stream_gzip or
-// stream_zip). When backed by a stream, decompression and decoding happen
-// together with no intermediate buffer.
+// The receiver may be bytes, string, or a stream value (from a stream producer
+// such as stream_gzip). When backed by a stream, decompression and decoding
+// happen together with no intermediate buffer.
 //
 //	<bytes>.decode_json_stream_lazy() -> <iterable<dyn>>
 //	<string>.decode_json_stream_lazy() -> <iterable<dyn>>

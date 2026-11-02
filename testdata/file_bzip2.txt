@@ -1,0 +1,19 @@
+# Get the bzip2 file ready.
+base64 bzip2.base64 test.bz2
+
+mito -use file,mime src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+[
+	string(file('test.bz2', 'application/x-bzip2')),      // Extract directly.
+	string(file('test.bz2').mime('application/x-bzip2')), // Extract from buffered bytes.
+]
+-- bzip2.base64 --
+QlpoOTFBWSZTWQ7qzPwAAAJRgAAQQAASRIAQIAAiGmjahDAgHNhR4u5IpwoSAd1Zn4A=
+-- want.txt --
+[
+	"hello bz\n",
+	"hello bz\n"
+]

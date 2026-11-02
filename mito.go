@@ -22,6 +22,7 @@
 package mito
 
 import (
+	"compress/bzip2"
 	"compress/gzip"
 	"context"
 	"crypto/tls"
@@ -526,6 +527,8 @@ var (
 		"text/csv; header=absent":  lib.CSVNoHeader,
 		"application/x-ndjson":     lib.NDJSON,
 		"application/zip":          lib.Zip,
+		"application/x-bzip2":      func(r io.Reader) io.Reader { return bzip2.NewReader(r) },
+		"application/x-tar":        lib.Tar,
 	}
 
 	limitPolicies = map[string]lib.LimitPolicy{

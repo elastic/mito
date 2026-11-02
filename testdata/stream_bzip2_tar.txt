@@ -1,0 +1,51 @@
+# Chain stream_bzip2 and stream_tar over a .tar.bz2 of bzip2 NDJSON files.
+#
+# The archive holds three entries, in this order:
+#
+#   d/             directory (not counted by stream_tar)
+#   d/m1.json.bz2  regular file, index 0: {"a":1} and {"b":2}
+#   d/m2.json.bz2  regular file, index 1: {"c":3}
+#
+# Each file is itself bzip2 compressed, hence the second stream_bzip2.
+base64 hourly.base64 hourly.tar.bz2
+
+mito -use file,json,stream,try src.cel
+! stderr .
+cmp stdout want.txt
+
+-- src.cel --
+{
+	"all":   file('hourly.tar.bz2').stream_bzip2().stream_tar().stream_bzip2().decode_json_stream_lazy().map(x, x),
+	"entry": file('hourly.tar.bz2').stream_bzip2().stream_tar(1).stream_bzip2().decode_json_stream_lazy().map(x, x),
+	"range": try(file('hourly.tar.bz2').stream_bzip2().stream_tar(2).decode_json_stream_lazy().map(x, x)),
+
+	// The bzip2 header is checked when the stream is created.
+	"bad_header":   try(b"not bzip2".stream_bzip2()),
+	"short_header": try(b"BZ".stream_bzip2()),
+	"empty":        try(b"".stream_bzip2()),
+}
+-- hourly.base64 --
+QlpoOTFBWSZTWVN2mt4AAJt/98vx4IHXgf/gdhRJMfZTnpBiAMQREAABAGAAAgAGCTAA01g0qaNAAA00AAAAZGgPUAMnhQSlT9JPU9TEJhMmhppo00MjJ+qA9EMTAQxAypPSBkAMhoAANABoGTQaAArlbiOXeVE4FCs5AJT57oEQGyjKWLM6JrCOeJRmWlSZEkSAU1EXkU+nQMCNfXMpaHvaVJY706NXhRSyY0cDlXEYPB0UlmyqJUkkqpAk6xtQAYISKZq5EOphGcPHlLc1jRY+m8yAhGLAzDkPeE3C8fi/7wwkhJlr/A+az5HKyLEr4RgieiP6C4MPodBi8Oh4oBOEn8Gg9SO/OdCE1BnSsSnxF/F3JFOFCQU3aa3g
+-- want.txt --
+{
+	"all": [
+		{
+			"a": 1
+		},
+		{
+			"b": 2
+		},
+		{
+			"c": 3
+		}
+	],
+	"bad_header": "stream_bzip2: bzip2 data invalid: bad magic value",
+	"empty": "stream_bzip2: reading header: unexpected EOF",
+	"entry": [
+		{
+			"c": 3
+		}
+	],
+	"range": "stream_tar: index 2 out of range [0, 2)",
+	"short_header": "stream_bzip2: reading header: unexpected EOF"
+}
