@@ -20,12 +20,15 @@ package mito
 import (
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -102,8 +105,37 @@ func server(ts *testscript.TestScript, neg bool, name string, newServer func(han
 	if neg {
 		ts.Fatalf("unsupported: ! %s", name)
 	}
+
+	// Parse leading -flag value pairs.
+	var barrierN int
+	var timeout time.Duration
+	i := 0
+	for i < len(args) && len(args[i]) > 0 && args[i][0] == '-' {
+		if i+1 >= len(args) {
+			ts.Fatalf("%s: flag %s requires a value", name, args[i])
+		}
+		switch args[i] {
+		case "-barrier":
+			n, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				ts.Fatalf("%s: -barrier: %v", name, err)
+			}
+			barrierN = n
+		case "-timeout":
+			d, err := time.ParseDuration(args[i+1])
+			if err != nil {
+				ts.Fatalf("%s: -timeout: %v", name, err)
+			}
+			timeout = d
+		default:
+			ts.Fatalf("%s: unknown flag %s", name, args[i])
+		}
+		i += 2
+	}
+	args = args[i:]
+
 	if len(args) != 1 && len(args) != 3 {
-		ts.Fatalf("usage: %s body [user password]", name)
+		ts.Fatalf("usage: %s [-barrier N] [-timeout duration] body [user password]", name)
 	}
 	var user, pass string
 	body, err := os.ReadFile(ts.MkAbs(args[0]))
@@ -112,21 +144,59 @@ func server(ts *testscript.TestScript, neg bool, name string, newServer func(han
 		user = args[1]
 		pass = args[2]
 	}
-	srv := newServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+	checkAuth := func(w http.ResponseWriter, req *http.Request) bool {
 		u, p, _ := req.BasicAuth()
-		// Obvious security anti-patterns are obvious; for testing.
 		if user != "" && user != u {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("user mismatch"))
-			return
+			return false
 		}
 		if pass != "" && pass != p {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("password mismatch"))
-			return
+			return false
 		}
-		w.Write(body)
-	}))
+		return true
+	}
+
+	var handler http.Handler
+	if barrierN > 0 {
+		var arrived atomic.Int64
+		gate := make(chan struct{})
+		var once sync.Once
+		handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if !checkAuth(w, req) {
+				return
+			}
+			if arrived.Add(1) >= int64(barrierN) {
+				once.Do(func() { close(gate) })
+			}
+			if timeout > 0 {
+				timer := time.NewTimer(timeout)
+				defer timer.Stop()
+				select {
+				case <-gate:
+				case <-timer.C:
+					w.WriteHeader(http.StatusServiceUnavailable)
+					fmt.Fprintf(w, "barrier timeout: only %d of %d requests arrived", arrived.Load(), barrierN)
+					return
+				}
+			} else {
+				<-gate
+			}
+			w.Write(body)
+		})
+	} else {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if !checkAuth(w, req) {
+				return
+			}
+			w.Write(body)
+		})
+	}
+
+	srv := newServer(handler)
 	ts.Setenv("URL", srv.URL)
 	ts.Defer(func() { srv.Close() })
 }
